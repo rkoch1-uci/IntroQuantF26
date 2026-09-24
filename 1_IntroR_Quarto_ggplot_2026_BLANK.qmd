@@ -1,9 +1,9 @@
 ---
 title: "IntroR_FirstGGplot"
-author: "Dr. Amy King-Henry"
-last modified: "Sept 2, 2026"
+author: "Ryan Koch"
+last modified: "Sept 24, 2026"
 format: html
-editor: visual
+editor: source
 ---
 
 # Introduction to R, Quarto, and GGplot
