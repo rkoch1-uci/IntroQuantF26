@@ -1,7 +1,7 @@
 ---
 title: "IntroR_FirstGGplot"
 author: "Ryan Koch"
-last modified: "Sept 24, 2026 @ 4:14 PM"
+last modified: "October 1, 2026 @ 2:52 PM"
 format: html
 editor: source
 ---
@@ -254,7 +254,7 @@ You can change the color in the geom argument. Test out how it works on differen
 ```{r}
 ggplot(candy_rankings) +  
   aes(x = chocolate) + 
-  geom_bar(color = 'chocolate4', fill = "white") 
+  geom_bar(aes(fill = fruity)) 
 ```
 
 If you want the color to reflect another variable, for example, if there is fruit in the candy too, then you make it a **mapped aesthetic**, or one that refers to some data to assign a visual. In this case, you place the **color** or **fill** argument **inside aes().**
@@ -262,14 +262,15 @@ If you want the color to reflect another variable, for example, if there is frui
 ```{r}
 ggplot(candy_rankings) +  
   aes(x = chocolate, fill = chocolate) + 
-  #Figure out whatever the position function means on Thurs 10/1
-  geom_bar(position = ) 
+  geom_bar(position = "dodge") 
 ```
 
 ### Challenge question: what proportion of candies have BOTH chocolate and caramel?
 
 ```{r}
-
+ggplot(candy_rankings) +
+  aes(x = chocolate & caramel) +
+  geom_bar(aes(fill = chocolate & caramel))
 ```
 
 ### Shapes
@@ -277,17 +278,19 @@ ggplot(candy_rankings) +
 Working on a scatterplot and want the points to be different shapes? Easy too!
 
 ```{r}
-ggplot() +
-  aes(x = ,
-      y = ) +
-  geom_point()
+ggplot(candy_rankings) +
+  aes(x = sugarpercent,
+      y = winpercent) +
+  geom_point(aes(shape = bar))
 ```
 
 Similarly, you can **map** shape to a variable in the aes() function.
 
 ```{r}
-ggplot() +
-  aes() +
+ggplot(candy_rankings) +
+  aes(x = sugarpercent,
+      y = winpercent) +
+  geom_point(aes(shape = bar, color = bar))
   
 ```
 
@@ -296,23 +299,27 @@ ggplot() +
 Pretty self-explanatory here. labs() are added separately from the other plot parameters.
 
 ```{r}
-ggplot() +
-  aes(
-  labs(x = 
-       y =
-       title = ,
-       subtitle = 
-       caption =
+ggplot(candy_rankings) +
+  aes(x = sugarpercent,
+      y = winpercent) +
+  labs(x = "Percent Sugar",
+       y = "Win Percentage",
+       title = "Sugar Content vs. Win Percentage",
+       subtitle = "top text",
+       caption = "bottom text") +
+  geom_point()
 
 ```
 
 ### X and Y axis limits
 
 ```{r}
-ggplot() +
-  aes(x = , 
-      y = =) +
+ggplot(candy_rankings) +
+  aes(x = sugarpercent, 
+      y = winpercent) +
   geom_point() +
+  xlim(0, 0.75) +
+  ylim(0, 0.75)
 
 ```
 
@@ -321,24 +328,37 @@ ggplot() +
 ### Bar plot
 
 ```{r}
-ggplot() +
-  aes(x = ) + 
+ggplot(candy_rankings) +
+  aes(x = chocolate) + 
+  labs(x = "Contains Chocolate",
+       y = "Total Count",
+       title = "Count of Chocolate Bars Within Dataset",
+       subtitle = "Including those that contain peanuts") +
+  geom_bar(aes(fill = peanutyalmondy))
 
 ```
 
 ### Histogram
 
 ```{r}
-ggplot() + 
-  aes(x = ) +
+ggplot(candy_rankings) + 
+  aes(x = sugarpercent) +
+  labs(x = "Number of Bars",
+       y = "Sugar Percentage",
+       title = "Count of Bars by Sugar Content") +
+  geom_histogram()
 
 ```
 
 ### Density Plot
 
 ```{r}
-ggplot() + 
-  aes(x = ) +
+ggplot(candy_rankings) + 
+  aes(x = sugarpercent) +
+  labs(x = "Number of Bars",
+       y = "Sugar Percentage",
+       title = "Count of Bars by Sugar Content") +
+  geom_density()
 
 ```
 
@@ -391,19 +411,23 @@ ggplot() +
 Multiple plots in multiple panes - what happens when you move the . and \~ next to chocolate, like in the commented out line?
 
 ```{r}
-ggplot() +
-  aes(x = , 
-      y = ) +
-  facet_grid()
+ggplot(candy_rankings) +
+  aes(x = sugarpercent, 
+      y = winpercent) +
+  geom_point() +
+  facet_grid(chocolate~.)
   #facet_grid(chocolate~.)
 ```
 
 ### Complex Examples
 
 ```{r}
-load(file = )
+load(file = "Demo Data Files/df5.Rdata")
 
-VisitorGraph <- ggplot() 
+VisitorGraph <- ggplot(df5) +
+  aes(x = YearRaw,
+      y = kVis) +
+  geom_point()
 
 VisitorGraph
 ```
@@ -411,11 +435,11 @@ VisitorGraph
 So that's kind of cool for a first shot, but it is definitely not a finalized graph. Let's start adding levels, and changing the line type, so we can get a graph that's a little nicer.
 
 ```{r}
-VisitorGraph2 <- ggplot() + 
-  aes(x = , y = ) +  
+VisitorGraph2 <- ggplot(df5) + 
+  aes(x = YearRaw, y = kVis) +  
   # Tells R what data to use
   
-  geom_point(aes(colour = )) + 
+  geom_point(aes(colour = State)) + 
   # Tells ggplot to make a scatterplot graph
   
   geom_line() + 
@@ -470,7 +494,26 @@ VisBoxplot
 Q1: Make a line graph that depicts the number of visitors per year for only Yosemite and Joshua Tree National Parks. Use color and line type to distinguish the two parks.
 
 ```{r}
-
+df5_trim = df5 |>
+  filter(Name == "Yosemite National Park" | Name == "Joshua Tree National Park")
+ggplot(df5_trim, aes(x = YearRaw, y = kVis)) +
+  labs(x = "Year",
+       y = "Number of Visitors",
+       title = "Annual Number of Visitors at Yosemite and Joshua Tree") +
+  geom_point(aes(color = Code)) +
+  geom_line(aes(color = Code),
+              se = FALSE) +
+  scale_x_continuous(
+    breaks = c(1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020),
+    labels = c(1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020)
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(), 
+    axis.line = element_line(colour = "black")
+    )
 ```
 
 Q2: Make a boxplot that compares visitation rates in all parks in 1980 to present.
@@ -482,5 +525,17 @@ Q2: Make a boxplot that compares visitation rates in all parks in 1980 to presen
 Q3: Make a plot using the data of your choosing to show something interesting about either the candy_rankings data or the np_visits data.
 
 ```{r}
-
+ggplot(df5, aes(x = kVis, y = Name)) +
+  labs(x = "Visitor Count",
+       y = "Park Name",
+       title = "Total Visitors per Park") +
+  geom_boxplot() +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_blank(), 
+    axis.line = element_line(colour = "black")
+    )
+  
 ```
