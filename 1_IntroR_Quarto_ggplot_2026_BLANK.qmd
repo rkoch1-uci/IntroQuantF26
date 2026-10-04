@@ -6,6 +6,18 @@ format: html
 editor: source
 ---
 
+# Loading all the packages and stuff so I don't have to keep redoing it every time
+
+```{r}
+install.packages("tidyverse")
+install.packages("rmarkdown")
+install.packages("dplyr")
+install.packages("palmerpenguins")
+install.packages("fivethirtyeight")
+
+library(tidyverse, rmarkdown, dplyr, palmerpenguins, fivethirtyeight)
+```
+
 # Introduction to R, Quarto, and GGplot
 
 THIS TUTORIAL COMPLETED BY: (Ryan Koch)
@@ -35,6 +47,7 @@ Outside the chunk you can write anything you want.
 - Click the green "Play" button on the right side of the chunk header.
 
 Command + Alt + I generates a new "chunk". Try it here! (or Ctrl + Alt + I for PC)
+
 ```{r}
 var = "John Chunk"
 print(var)
@@ -231,7 +244,6 @@ price_of_fruity = ggplot(candy_rankings) +
 price_of_fruity
 ```
 
-
 2.  Are sweeter candies more expensive? Do the candies with higher sugarpercent have higher winpercent? Plot this relationship.
 
 ```{r}
@@ -241,7 +253,6 @@ sugar_vs_win = ggplot(candy_rankings) +
   geom_smooth()
 sugar_vs_win
 ```
-
 
 ## PRETTY TIME!
 
@@ -525,17 +536,23 @@ Q2: Make a boxplot that compares visitation rates in all parks in 1980 to presen
 Q3: Make a plot using the data of your choosing to show something interesting about either the candy_rankings data or the np_visits data.
 
 ```{r}
-ggplot(df5, aes(x = kVis, y = Name)) +
-  labs(x = "Visitor Count",
-       y = "Park Name",
+ggplot(df5, aes(x = YearRaw, y = kVis)) +
+  labs(x = "Year",
+       y = "Visitor Count",
        title = "Total Visitors per Park") +
-  geom_boxplot() +
+  geom_line() +
+  facet_wrap(~Name, scales = "free") +
+  scale_x_continuous(
+    breaks = c(1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020),
+    labels = c(1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020)
+  ) +
   theme_bw() +
   theme(
     panel.grid.major = element_blank(), 
     panel.grid.minor = element_blank(),
     panel.background = element_blank(), 
     axis.line = element_line(colour = "black")
-    )
+  )
+ggsave("df5 Ex. 3 Scatter.png", width = 2700, height = 2200, units = "px")
   
 ```
