@@ -1,7 +1,7 @@
 ---
 title: "Owl Limpet Analysis BLANK"
 author: "Dr. Amy King-Henry"
-last modified: "October 4, 2026"
+last modified: "October 8, 2026"
 format: html
 editor: visual
 ---
@@ -44,7 +44,13 @@ Make a histogram with all the data.
 ```{r}
 ggplot(SizeData_2022_2025) +
   aes(x = shell_length_mm) +
-  geom_histogram()
+  labs(
+    x = "Shell length (mm)",
+    y = "Frequency (n = 1933)",
+    title = "Shell size variation across all sites sampled"
+  ) +
+  theme_bw() +
+  geom_histogram(binwidth = 2)
 
 ```
 
@@ -52,7 +58,18 @@ Make a histogram with a `facet_wrap()` to separate the data from each site and y
 
 ```{r}
 ggplot(SizeData_2022_2025) +
-  aes(x = shell_length_mm, fill = year, position = "dodge") +
+  aes(x = shell_length_mm, fill = year) +
+  labs(
+    x = "Shell length (mm)",
+    y = "Frequency (n = 1933)",
+    title = "Shell size variation per site per year"
+  ) +
+  theme_bw() +
+  theme(
+    strip.text.y = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+  ) +
   geom_histogram(binwidth = 2) +
   facet_grid(rows = vars(year), cols = vars(site), scale = "free")
 
@@ -97,7 +114,21 @@ TransectLengths |> ggplot() +
   geom_point()
 
 TransectLengths |> ggplot() +
-  aes(x = site, y = transect_length_m) +
+  aes(
+    x = site,
+    y = transect_length_m
+  ) +
+  labs(
+    x = "Site name",
+    y = "Transect length (in meters)",
+    title = "Transect lengths from each site"
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none"
+  ) +
   geom_boxplot()  +
   geom_point(aes(color = "red"))
 
@@ -115,7 +146,20 @@ Graph 1:
 
 ```{r}
 ggplot(SizeData_2022_2025) +
-  aes(x = habitat, y = shell_length_mm) +
+  aes(
+    x = habitat,
+    y = shell_length_mm
+  ) +
+  labs(
+    x = "Habitat",
+    y = "Shell length (in millimeters)",
+    title = "Shell length variation with habitat"
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
   geom_boxplot()
 ```
 
@@ -126,12 +170,18 @@ A basic boxplot of shell size (in millimeters) graphed against the habitat each 
 Graph 2:
 
 ```{r}
-treasure_cove_data =SizeData_2022_2025 |>
+SizeData_2022_2025 |>
   filter(site == "Treasure Cove") |>
-  select(site, year, habitat, shell_length_mm)
-ggplot(treasure_cove_data) + 
-  aes(x = shell_length_mm) +
-  geom_density(aes(fill = year), alpha = 0.33, binwidth = 2)
+  select(site, year, habitat, shell_length_mm) |>
+  ggplot() + 
+    aes(x = shell_length_mm) +
+    labs(
+      x = "Shell length (mm)",
+      y = "Density",
+      title = "Density of shell length measurements across all sites per year"
+    ) +
+    theme_bw() +
+    geom_density(aes(fill = year), alpha = 0.33, binwidth = 2)
 ```
 
 This shows:
@@ -202,7 +252,6 @@ Limpet_Density |>
     se_limpet_density = sd_limpet_density/sqrt(sample_size)
   )
 
-
 ```
 
 Now create a summary table in which you calculate separate mean and standard deviation for each site and year (Shaws vs. Heisler vs. Treasure Cove)? What was the standard error? Round the mean and standard error to one decimal place. (look up the `round()` function!)
@@ -233,8 +282,13 @@ Limpet_Density |> ggplot() +
     y = limpet_density
     ) +
   labs(
-    x = "Limpet density",
+    x = "Site name",
     y = "Limpets per square meter"
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
   ) +
   geom_boxplot(aes(fill = year))
   
@@ -246,14 +300,21 @@ A column plot with errorbars, and fill = year, using your new `LimpetPopSummary`
 LimpetPopSummary |> ggplot()+
   aes(x = site, y = mean_limpet_density, fill = year) +
   labs(
-    x = "Mean limpets per square meter",
-    y = "Sample site"
+    x = "Site name",
+    y = "Limpets per square meter",
+    title = "Mean limpets per square meter for each site"
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
   ) +
   geom_col(position = "dodge") +
   geom_errorbar(aes(
     ymin = mean_limpet_density - se_limpet_density,
     ymax = mean_limpet_density + se_limpet_density),
     position = position_dodge(.9), width = 0.25)
+
 
 ```
 
@@ -268,9 +329,11 @@ Limpet_Density |> ggplot() +
     size = limpet_density,
     ) +
   labs(
-    x = "Limpets per square meter",
-    y = "Transect number"
+    x = "Transect number",
+    y = "Limpets per square meter",
+    title = "Limpet density by transect number",
   ) +
+  theme_bw() +
   geom_point(position = position_dodge(0.1), alpha = 0.5)
 
 ```
@@ -357,6 +420,16 @@ knitr::kable(shell_length_summary)
 ```{r}
 ggplot(SizeData_2022_2025) +
   aes(x = site, y = shell_length_mm, fill = year) +
+  labs(
+    x = "Site name",
+    y = "Shell length (in millimeters)",
+    title = "Shell length variance at each site"
+  ) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
   geom_boxplot()
 
 ```
@@ -507,6 +580,12 @@ All_Territories_area_mass |>
     x = size_mm,
     y = area_mm2
   ) +
+  labs(
+    x = "Plot size (in millimeters)",
+    y = "Plot area (in square millimeters)",
+    title = "Owl limpet plot size versus plot area"
+  ) +
+  theme_bw() +
   geom_point() +
   geom_smooth(se = FALSE)
   
@@ -521,6 +600,12 @@ All_Territories_area_mass |>
     y = area_mm2,
     color = site
   ) +
+  labs(
+    x = "Plot size (in millimeters)",
+    y = "Plot area (in square millimeters)",
+    title = "Owl limpet plot size versus plot area"
+  ) +
+  theme_bw() +
   geom_point(alpha = 0.5) +
   geom_smooth(se = FALSE) 
  
@@ -534,6 +619,12 @@ All_Territories_area_mass |>
     x = mass_g,
     y = area_mm2
   ) +
+  labs(
+    x = "Limpet mass (in grams)",
+    y = "Plot area (in square millimeters)",
+    title = "Owl limpet mass versus plot area"
+  ) +
+  theme_bw() +
   geom_point() +
   geom_smooth(se = FALSE) +
   facet_wrap(~location)
