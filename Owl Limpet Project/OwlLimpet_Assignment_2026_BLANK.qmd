@@ -50,7 +50,7 @@ ggplot(SizeData_2022_2025) +
     title = "Shell size variation across all sites sampled"
   ) +
   theme_bw() +
-  geom_histogram(binwidth = 2)
+  geom_histogram(binwidth = 3)
 
 ```
 
@@ -58,7 +58,7 @@ Make a histogram with a `facet_wrap()` to separate the data from each site and y
 
 ```{r}
 ggplot(SizeData_2022_2025) +
-  aes(x = shell_length_mm, fill = year) +
+  aes(x = shell_length_mm) +
   labs(
     x = "Shell length (mm)",
     y = "Frequency (n = 1933)",
@@ -66,12 +66,12 @@ ggplot(SizeData_2022_2025) +
   ) +
   theme_bw() +
   theme(
-    strip.text.y = element_blank(),
+    # strip.text.y = element_blank(),
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank(),
   ) +
-  geom_histogram(binwidth = 2) +
-  facet_grid(rows = vars(year), cols = vars(site), scale = "free")
+  geom_histogram(binwidth = 3) +
+  facet_wrap(year ~ site, scale = "free")
 
 ```
 
@@ -309,12 +309,13 @@ LimpetPopSummary |> ggplot()+
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank()
   ) +
-  geom_col(position = "dodge") +
+  geom_col(position = position_dodge()) +
   geom_errorbar(aes(
     ymin = mean_limpet_density - se_limpet_density,
     ymax = mean_limpet_density + se_limpet_density),
-    position = position_dodge(.9), width = 0.25)
-
+    position = position_dodge(0.9),
+    width = 0.2
+  )
 
 ```
 
@@ -528,14 +529,8 @@ load(file = "Data/All_Territories.Rdata")
 
 load(file = "Data/FenbergTerr.Rdata")
 
-All_Territories_clean = All_Territories |>
-  select(location, size_mm, numbsquares, site, year) |>
-  mutate(area_mm2 = numbsquares * (19 * 19)) |>
-  mutate(mass_g = 0.000009*size_mm ^ 3.0471)
-
-FenbergTerr_transform = bind_cols(FenbergTerr, size_mm = NA, numbsquares = NA)
-
-All_Territories_combined = bind_rows(All_Territories_clean, FenbergTerr_transform)
+All_Territories = All_Territories |>
+  select(location, size_mm, numbsquares, site, year)
 
 ```
 
@@ -543,7 +538,7 @@ All_Territories_combined = bind_rows(All_Territories_clean, FenbergTerr_transfor
 
 ```{r}
 ## How many territories were measured at each site in each year? 
-All_Territories_combined |> 
+All_Territories |> 
   group_by(site, year) |>
   summarize(total_measured = n())
   
@@ -558,7 +553,7 @@ Create new columns for:
 - Limpet body mass from shell length (equation below is from Fenberg et al. 2013).
 
 ```{r}
-All_Territories_area_mass <- All_Territories_combined |> 
+All_Territories_area_mass <- All_Territories |> 
   mutate(area_mm2 = numbsquares * (19 * 19)) |>
   # create a new column for territory area in mm^2 using the "numbsquares" column
          # mesh = 19 mm x 19 mm 
@@ -607,7 +602,7 @@ All_Territories_area_mass |>
   ) +
   theme_bw() +
   geom_point(alpha = 0.5) +
-  geom_smooth(se = FALSE) 
+  geom_smooth(se = FALSE, size = 1.5) 
  
 ```
 
@@ -622,7 +617,8 @@ All_Territories_area_mass |>
   labs(
     x = "Limpet mass (in grams)",
     y = "Plot area (in square millimeters)",
-    title = "Owl limpet mass versus plot area"
+    title = "Limpet mass versus plot area",
+    subtitle = "Faceted by habitat"
   ) +
   theme_bw() +
   geom_point() +
@@ -634,6 +630,23 @@ All_Territories_area_mass |>
 #### 4.5 What observations do you make about these plots? What do you find interesting about them? Explain one observation and make one more plot of your choosing to explore something you found interesting.
 
 ```{r}
+All_Territories_area_mass |>
+  ggplot() +
+  aes(
+    x = mass_g,
+    y = area_mm2
+  ) +
+  labs(
+    x = "Plot Area (in square meters)",
+    y = "Limpet mass (in grams)",
+    title = "Limpet mass versus plot area",
+    subtitle = "Faceted by site & habitat"
+  ) +
+  theme_bw() +
+  #facet_wrap(site ~ location, scale = "free") +
+  facet_grid(rows = vars(site), cols = vars(location), scale = "free") +
+  geom_point() +
+  geom_smooth(se = FALSE, size = 1.5)
 
 ```
 
@@ -655,7 +668,19 @@ One way to transform data that has this shape is to apply a log-transformation. 
 ```{r scatterplot with regression line}
 # plot a scatterplot log area on y axis by log mass_g on x axis, best fit regression line but no SE interval
 
-All_Territories_area_mass |> ggplot() + 
+All_Territories_area_mass |> ggplot() +
+  aes(
+    x = log(mass_g),
+    y = log(area_mm2)
+  ) +
+  labs(
+    x = "Log of limpet mass (in grams)",
+    y = "Log of plot area (in square millimeters)",
+    title = "Log of limpet mass versus log of plot area"
+  ) +
+  theme_bw() +
+  geom_point() +
+  geom_smooth(se = FALSE)
 
 ```
 
