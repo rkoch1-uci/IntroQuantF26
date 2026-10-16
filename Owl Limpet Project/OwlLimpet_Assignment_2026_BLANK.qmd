@@ -400,8 +400,7 @@ LimpetPopSummary |> ggplot()+
       ymin = mean_limpet_density - se_limpet_density,
       ymax = mean_limpet_density + se_limpet_density
     ),
-    position = position_dodge(0.9),
-    width = 0.2
+    position = position_dodge(0.9), width = 0.2
   )
 
 # Saving plot with ggsave() directed to "Graphs" folder in working directory
@@ -543,6 +542,7 @@ Since there was no difference in means, we'll ignore year at Treasure Cove from 
 #### 2.8 EXTRA CREDIT: Do an ANOVA comparing Shaws, Heisler, and Treasure Cove 2025 density data (exclude 2023 so that the sample size is similar between all three). Use a Tukey post-hoc test. Explain the results.
 
 ```{r}
+# Filtering out Corona del Mar data using filter()
 ShawsHeislerTreasure_Density = Limpet_Density |>
   filter(year != "2023")
 
@@ -704,15 +704,22 @@ Are we pretty confident that these samples were drawn from different populations
 If you would like to test whether size differs by predicted human impact, at CDM and TC "near" means high impact and "far" means low impact. Heisler was our high impact site and Shaws was our low impact site.
 
 ```{r}
+# Filtering for Shaws Cove and Heisler Park data using filter()
 ShawsHeisler_Sizes = SizeData_2022_2025 |>
   filter(site == "Shaws Cove" | site == "Heisler Park")
 
+# Creating linear model for shell size as a function of site using lm()
 model = lm(shell_length_mm ~ site, ShawsHeisler_Sizes)
 
+# Visualizing model residuals
 plot(model, which = 1)
 
 t.test(shell_length_mm ~ site, data = ShawsHeisler_Sizes)
 
+# Generating summary statistics per site by piping summarize() into group_by()
+# Creating column plot with ggplot() + geom_col()
+# Cleaning visuals with theme_bw(), theme() to remove gridlines and legend
+# Adding error bar with geom_errorbar() using standard error from ShawsHeisler_Sizes summary statistics
 ShawsHeisler_Sizes |> 
   group_by(site) |>
   summarize(mean_shell_size = mean(shell_length_mm),
