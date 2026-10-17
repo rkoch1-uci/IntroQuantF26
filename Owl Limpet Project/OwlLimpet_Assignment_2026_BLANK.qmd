@@ -112,7 +112,7 @@ Make a table using `select()` and `distinct()` to only show the length of each t
 # Targeting transect length with select() then isolating unique transects with distinct() 
 TransectLengths <- SizeData_2022_2025 |> 
   select(site, transect_num, transect_length_m) |>
-  distinct(site, transect_num, transect_length_m)
+  distinct(transect_num, .keep_all = TRUE)
 
 # Visual verification
 TransectLengths
