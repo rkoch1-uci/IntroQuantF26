@@ -60,11 +60,7 @@ ggplot(SizeData_2022_2025) +
   ) +
   geom_histogram(fill = "salmon", color = "black", binwidth = 3)
 
-# Saving histogram via ggsave() directed to "Graphs" folder in working directory
-ggsave("SizeData_2022_2025_histogram_full.png", path = "Graphs")
 ```
-
-![](Graphs/SizeData_2022_2025_histogram_full.png)
 
 Make a histogram with a `facet_wrap()` to separate the data from each site and year into separate graphs. What do you observe about the different histograms?
 
@@ -87,11 +83,7 @@ ggplot(SizeData_2022_2025) +
   geom_histogram(aes(fill = site), color = "black", binwidth = 3) +
   facet_wrap(year ~ site, scale = "free")
 
-# Saving histogram via ggsave() directed to "Graphs" folder in working directory
-ggsave("SizeData_2022_2025_histogram_year_by_site.png", path = "Graphs")
 ```
-
-![](Graphs/SizeData_2022_2025_histogram_year_by_site.png)
 
 We know our minimum size cut-off varied in different years of the surveys, and some teams just didn't follow directions. Filter out any observations smaller than 15 mm.
 
@@ -143,10 +135,6 @@ TransectLengths |> ggplot() +
     legend.position = "none"
   ) +
   geom_boxplot()
-
-# Saving plot via ggsave() directed to "Graphs" folder in working directory
-ggsave("TransectLengths_boxplot_only.png", path = "Graphs")
-
 # Creating scatter plot of TransectLengths with ggplot() + geom_point()
 # Cleaning visuals with theme_bw() and theme() to remove gridlines
 TransectLengths |> ggplot() +
@@ -163,9 +151,6 @@ TransectLengths |> ggplot() +
     legend.position = "none"
   ) +
   geom_point()
-
-# Saving scatterplot via ggsave() directed to "Graphs" folder in working directory
-ggsave("TransectLengths_scatterplot_only.png", path = "Graphs")
 
 # Overlaying scatter plot onto box plot by calling geom_point after ggplot() + geom_boxplot()
 # Cleaning visuals with theme_bw() and theme() to remove gridlines
@@ -185,15 +170,7 @@ TransectLengths |> ggplot() +
   geom_boxplot()  +
   geom_point(color = "red", size = 2)
 
-# Saving plot via ggsave() directed to "Graphs" folder in working directory
-ggsave("TransectLengths_scatter_and_boxplot.png", path = "Graphs")
 ```
-
-![Box plot of TransectLengths](Graphs/TransectLengths_boxplot_only.png)
-
-![Scatter plot of TransectLengths](Graphs/TransectLengths_scatterplot_only.png)
-
-![Combined box + scatter of TransectLengths](Graphs/TransectLengths_scatter_and_boxplot.png)
 
 THINKING QUESTIONS: Do we have the number of transects that we expect to in our data set? Are they all the same length? Do our numbers make sense?
 
@@ -220,11 +197,7 @@ ggplot(SizeData_2022_2025) +
   ) +
   geom_boxplot()
 
-# Saving plot via ggsave() directed to "Graphs" folder in working directory
-ggsave("SizeData_2022_2025_boxplot_length_by_habitat.png", path = "Graphs")
 ```
-
-![](Graphs/SizeData_2022_2025_boxplot_length_by_habitat.png)
 
 This shows:
 
@@ -249,11 +222,7 @@ SizeData_2022_2025 |>
     theme_bw() +
     geom_density(aes(fill = year), alpha = 0.33, binwidth = 2)
 
-# Saving plot via ggsave() directed to "Graphs" folder in working directory
-ggsave("SizeData_2022_2025_densityplot_length.png", path = "Graphs")
 ```
-
-![](Graphs/SizeData_2022_2025_densityplot_length.png)
 
 This shows:
 
@@ -372,11 +341,7 @@ Limpet_Density |> ggplot() +
   ) +
   geom_boxplot(aes(fill = year))
 
-# Saving plot with ggsave() directed to "Graphs" folder in working directory
-ggsave("Limpet_Density_boxplot.png", path = "Graphs")
 ```
-
-![](Graphs/Limpet_Density_boxplot.png)
 
 A column plot with errorbars, and fill = year, using your new `LimpetPopSummary` object. Make sure to label the y-axis appropriately.
 
@@ -403,11 +368,7 @@ LimpetPopSummary |> ggplot()+
     position = position_dodge(0.9), width = 0.2
   )
 
-# Saving plot with ggsave() directed to "Graphs" folder in working directory
-ggsave("Limpet_Density_columnplot.png", path = "Graphs")
 ```
-
-![](Graphs/Limpet_Density_columnplot.png)
 
 A `geom_point()` or `geom_jitter()`plot to visualize individual transect density observations
 
@@ -424,11 +385,7 @@ Limpet_Density |> ggplot() +
   theme_bw() +
   geom_point(aes(color = site, size = limpet_density), position = position_dodge(0.2), alpha = 0.5)
 
-# Saving plot with ggsave() directed to "Graphs" folder in working directory
-ggsave("Limpet_Density_scatterplot.png", path = "Graphs")
 ```
-
-![](Graphs/Limpet_Density_scatterplot.png)
 
 Which plot do you find the most informative and useful and why?
 
@@ -448,7 +405,7 @@ T-Test assumptions (for a Student's T-test)
 
 - Is there homogeneity of variance (i.e., the variability of the data in each group is similar)?
 
-  All data except for the two Treasure Cove years vary similarly. The two Treasure Cove years do not vary similarly when compared to one another specifically.
+  All data except for the two Treasure Cove years vary similarly. The two Treasure Cove years do not vary similarly when compared to one another specifically, being roughly equivalent rather than having a similar degree of difference than either has from a non-self site.
 
 - Is the distribution of the model residuals approximately normal?
 
@@ -531,11 +488,7 @@ TC_density |>
     width = 0.2
   )
 
-# Saving plot with ggsave() directed to "Graphs" folder in working directory
-ggsave("TC_density_column_t-test.png", path = "Graphs")
 ```
-
-![](Graphs/TC_density_column_t-test.png)
 
 Since there was no difference in means, we'll ignore year at Treasure Cove from now on and just pool our data to make it easier for ourselves.
 
@@ -593,11 +546,7 @@ ggplot(SizeData_2022_2025) +
   ) +
   geom_boxplot()
 
-# Saving plot with ggsave() directed to "Graphs" folder in working directory
-ggsave("SizeData_2022_2025_boxplot_length_by_site.png", path = "Graphs")
 ```
-
-![](Graphs/SizeData_2022_2025_boxplot_length_by_site.png)
 
 #### 3.2. Is there a [statistically significant]{.underline} difference in [mean]{.underline} size between limpets measured at Treasure Cove (a relatively low-impact site) compared to CDM (a high impact site)?
 
@@ -833,11 +782,7 @@ All_Territories_area_mass |>
   geom_point() +
   geom_smooth(se = FALSE)
 
-# Saving plot with ggsave() directed to "Graphs" folder in working directory
-ggsave("All_Territories_area_mass_scatterplot.png", path = "Graphs")
 ```
-
-![](Graphs/All_Territories_area_mass_scatterplot.png)
 
 ```{r}
 ## Scatter plot with site mapped to color
@@ -859,11 +804,7 @@ All_Territories_area_mass |>
   theme_bw() +
   geom_point(alpha = 0.5)
 
-# Saving plot with ggsave() directed to "Graphs" folder in working directory 
-ggsave("All_Territories_area_mass_scatterplot_site_mapped.png", path = "Graphs")
 ```
-
-![](Graphs/All_Territories_area_mass_scatterplot_site_mapped.png)
 
 ```{r}
 ## mass_g vs. area_mm2 scatterplot with best fit regression line, no SE zone, faceted by habitat
@@ -891,11 +832,7 @@ All_Territories_area_mass |>
   geom_smooth(color = "black", se = FALSE) +
   facet_wrap(location~.)
 
-# Saving plot with ggsave() directed to "Graphs" folder in working directory  
-ggsave("All_Territories_area_mass_scatterplot_by_habitat.png", path = "Graphs")
 ```
-
-![](Graphs/All_Territories_area_mass_scatterplot_by_habitat.png)
 
 #### 4.5 What observations do you make about these plots? What do you find interesting about them? Explain one observation and make one more plot of your choosing to explore something you found interesting.
 
@@ -925,11 +862,7 @@ All_Territories_area_mass |>
   geom_point(aes(color = site)) +
   geom_smooth(color = "black", se = FALSE)
 
-# Saving plot with ggsave() directed to "Graphs" folder in working directory
-ggsave("All_territories_area_mass_scatterplot_by_site_and_habitat.png", path = "Graphs")
 ```
-
-![](Graphs/All_territories_area_mass_scatterplot_by_site_and_habitat.png)
 
 I wanted to thin out the data further by faceting against both site and habitat, displaying best fit line for each facet to see if minimizing the impact of site on the relationship between plot area and body mass reveals a linear relationship. This, of course, did not show any newly revealed linearity, as all the best fit lines are not linear.
 
@@ -969,11 +902,7 @@ All_Territories_area_mass |> ggplot() +
   geom_point() +
   geom_smooth(se = FALSE)
 
-# Saving plot with ggsave() directed to "Graphs" folder in working directory
-ggsave("All_Territories_area_mass_scatterplot_log.png", path = "Graphs")
 ```
-
-![](Graphs/All_Territories_area_mass_scatterplot_log.png)
 
 ```{r}
 # write the linear model object and examine the residual and QQ plots
@@ -1025,9 +954,6 @@ FenbergTerr |> ggplot() +
   geom_point() +
   geom_smooth(se = FALSE)
 
-# Saving plot with ggsave() directed to "Graphs" folder in working directory
-ggsave("FenbergTerr_scatterplot_log.png", path = "Graphs")
-
 # Find the slope and intercept of the best fit line
 Fenberg_model <- lm(   )
 
@@ -1035,8 +961,6 @@ Fenberg_model <- lm(   )
 ```
 
 Explain your findings!
-
-![](Graphs/FenbergTerr_scatterplot_log.png)
 
 Fenberg's log-transformed mass vs. area plot does appear to exhibit slight linearity.
 
