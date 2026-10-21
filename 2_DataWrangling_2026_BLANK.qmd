@@ -383,13 +383,11 @@ Can you write a line that renames `passenger_id` and also selects only `Survived
 titanic |> 
   rename("passenger_id" = PassengerId) |>
   select(Survived, Fare, Age, Pclass)
-`````````
 
 #### mutating using `case_when()`
 
 Want to rekey some of the values themselves, based on certain conditions? `case_when()` is like an "if... then" statement.
 
-```{r eval = FALSE}
 # mutate(NewColName = case_when( 
 #     Variable == "old value" ~ "new value", 
 #     Variable == "different old value" ~ "different new value", 
