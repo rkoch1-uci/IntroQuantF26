@@ -1,7 +1,7 @@
 ---
 title: "Tests of Difference"
 author: "Ryan Koch"
-last modified: "October 13, 2026"
+last modified: "October 22, 2026"
 format: html
 editor: visual
 ---
@@ -11,7 +11,7 @@ editor: visual
 This tutorial will walk you through how to conduct various simple one- and two-sample tests in R, as well as a simple ANOVA, using examples.
 
 ```{r}
-install.packages("Hmisc")
+# install.packages("Hmisc")
 
 library(tidyverse)
 ```
@@ -259,8 +259,7 @@ t.test(turtles_wide$After, turtles_wide$Before,
 Visualize...
 
 ```{r}
-turtles |> 
-  ggplot() +
+
 
 ```
 
@@ -328,7 +327,7 @@ We will follow the following steps to conduct our test:
 Today we are examining a data set of plant heights (specifically grasses) collected at three sites on a hillside - Upper, Middle and Lower. We are interested in if location on the hillside influences plant height.
 
 ```{r}
-
+sward2
 ```
 
 ### Step 2: Write a formula for the test
@@ -348,7 +347,7 @@ Therefore, using the real column names, our formula for this test is:
 We will create a model object here that will allow us to test some of our assumptions later. lm() stands for linear model; ANOVA is a special case of linear model and this function works fine for us here.
 
 ```{r}
-model <-
+model <- lm(Height ~ Site, data = sward2)
 ```
 
 ### Step 3 : Visualize the data
@@ -356,9 +355,9 @@ model <-
 The first step in an analysis is ALWAYS to visualize your data. Does it look about how you expect?
 
 ```{r}
-ggplot() + 
-  aes(x = , y = ) + 
-  
+ggplot(sward2) + 
+  aes(x = Site, y = Height) + 
+  geom_boxplot()
 ```
 
 ### Step 4 : Check Assumptions
@@ -400,7 +399,7 @@ Does a Q-Q plot of the model residuals form roughly a straight line?
 Note: the numbered points are ones that are being highlighted as outliers, technically. You can decide later if you want to keep them or not. The number indicates the row number in the original data frame.
 
 ```{r}
-plot(model, )
+plot(model, which = 2)
 
 plot()
 
@@ -409,7 +408,7 @@ plot()
 The null hypothesis of a Shapiro-Wilk test is that the distribution of the data is not different from a normal distribution. Therefore, p\<0.05 means your model residuals are different from normal. Caveat: the Shapiro-Wilk test is oversensitive with greater than 50 observations. Our "badmodel" is significantly not normal, but also has 60 observations, so the Shapiro test is starting to be not appropriate.
 
 ```{r}
-shapiro.test()
+shapiro.test(model$residuals)
 
 shapiro.test()
 
@@ -422,7 +421,7 @@ Since our data is normal, we can move on to conduct the ANOVA!
 One way to check HOV is to plot the residuals against the fitted values and eyeball whether the variance looks screwy. If the variance isn't wildly different between the three samples, then we're good.
 
 ```{r}
-plot()
+plot(model, which = 1)
 
 ```
 
@@ -432,7 +431,7 @@ The null hypothesis of the Bartlett Test is that the variance is equal among all
 ?bartlett.test
 
 # Bartlett Test of Homogeneity of Variances
-bartlett.test()
+bartlett.test(Height ~ Site, data = sward2)
 
 # HOV is separate from testing for normality! 
 
@@ -448,7 +447,7 @@ You actually already conducted the computations for the ANOVA when you ran the l
 # remember:
 # model <- lm(Height ~ Site, data = sward2)
 
-anova()
+anova(model)
 ```
 
 The table above is what you are expected to report along with your analysis when you do an ANOVA for a paper. In addition, if you refer to your results in text, you'll share your F-value with the degrees of freedom as a subscript and the p-value (see Gardener Ch. 10, p. 259 for details and examples).
@@ -476,7 +475,7 @@ If you do not find a relationship (i.e., p \> 0.05), then you are done. However,
 ```{r}
 # TukeyHSD likes a particular format for our input - instead of the lm() anova strategy it prefers an object made by aov(). It does the same calculations, just using a different function name. 
 
-TukeyHSD( aov(  ~ , data = = ) )
+TukeyHSD(aov(Height ~ Site, data = sward2))
 ```
 
 Which ones are different?
@@ -488,38 +487,71 @@ Our box plot was useful for a first pass, but since our data was normal, we woul
 One approach we've used before is to use summarize to make a table of the mean and standard error at each site, then graph a column plot using geom_col() and geom_errorbar().
 
 ```{r}
-sward_summary <-  |> 
-  group_by() |>
-  summarise(mean = , 
-            se =  )
-
-ggplot() + 
-  aes() + 
-  geom_col() + 
-  geom_errorbar()
+sward_summary <- sward2 |> 
+  group_by(Site) |>
+  summarise(mean = mean(Height),
+            sd = sd(Height),
+            n = n(),
+            se = sd/sqrt(n)
+  )
+sward_summary |>
+  ggplot() + 
+  aes(x = Site, y = mean) + 
+  geom_col(position = position_dodge()) + 
+  geom_errorbar(aes(
+    ymin = mean - se,
+    ymax = mean + se
+    ),
+    position = position_dodge(), width = 0.2
+  )
 ```
 
 A second way is to allow ggplot to calculate the summary statistics for us. A second class of functions can be used instead of "geom" called "stat". In this case, we use two stat_summaries - one that calculates the mean, the other
 
 ```{r}
-ggplot() +
+ggplot(sward2) +
+  aes(x = Site, y = Height) +
   stat_summary(
-    fun.data = ,
-    geom = , 
-    width = ) 
+    fun.y = "mean",
+    geom = "bar", 
+  ) +
+  stat_summary(
+      fun.data = mean_se,
+      geom = "errorbar",
+      width = 0.3
+  )
 ```
 
 You may prefer to plot the 95% confidence limits instead of the standard error, which is more useful for large samples (and is approximately 1.96 \* standard error).
 
 ```{r}
-library()
-ggplot()
+install.packages("Hmisc")
+library(Hmisc)
+ggplot(sward2) +
+aes(x = Site, y = Height) +
+  stat_summary(
+    fun.y = "mean",
+    geom = "bar") +
+  stat_summary(
+    fun.data = mean_cl_normal,
+    geom = "errorbar", 
+    width = 0.1)
 ```
 
 That's a little stocky looking though, so let's try another way to look at it. All we have to do is substitute geom_point(). This one collapses the y-axis so it doesn't go all the way to zero, which can be an advantage if your variables don't make sense to go all the way to zero.
 
 ```{r}
-ggplot() 
+ggplot(sward2) +
+  aes(x = Site, y = Height) +
+  stat_summary(
+    fun.y = "mean",
+    geom = "point", 
+  ) +
+  stat_summary(
+    fun.data = mean_se,
+    geom = "errorbar",
+    width = -0.1
+  )
 
 ```
 
@@ -528,7 +560,7 @@ ggplot()
 This is a bit of a logic puzzle to annotate. Look at those Tukey HSD results again. Which pairwise comparisons indicate that the two samples don't differ?
 
 ```{r}
-TukeyHSD(
+TukeyHSD(aov(Height ~ Site, data = sward2))
 ```
 
 If one differed from all the others, then this would be simple and you can just put an asterisk above the one that is different.
@@ -544,22 +576,26 @@ That means Lower is now (AB), Middle is only (A), and Upper is only (B).
 We'll use geom_text to add these labels in order so they hover just above the error bars. This is the kind of thing that I recommend you just copy and paste from here, or Google when you need it. That's what I did just now, and stole the code from this website that came up: https://www.staringatr.com/3-the-grammar-of-graphics/bar-plots/3_tukeys/
 
 ```{r}
-ggplot() + 
-  aes() + 
-  geom_col() + 
-  geom_errorbar(), width = ) +
+ggplot(sward_summary) + 
+  aes(x = Site, y = mean) + 
+  geom_point() + 
+  geom_errorbar(aes(
+    ymin = mean - se,
+    ymax = mean + se
+  ),
+  position = position_dodge(0.9), width = 0.2) +
   geom_text(
-    label = 
-    aes(), 
-    vjust = 
-    size = 
-  ylim()
+    label = c("AB", "A", "B"),
+    aes(y = mean + se, x = Site), 
+    vjust = -1,
+    size = 3) 
+#  ylim()
 ```
 
 If you don't like how that looks all crowded, you can also just pick a height to have the letters sit at that's aesthetically pleasing so they're all the same. To do this, just change the value where I've marked a big "%%%" and uncomment the line.
 
 ```{r}
-ggplot()
+
 ```
 
 ### 

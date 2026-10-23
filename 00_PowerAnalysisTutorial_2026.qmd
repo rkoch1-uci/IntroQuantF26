@@ -7,7 +7,9 @@ editor: visual
 ---
 
 ```{r}
-install.packages("pwr")
+# install.packages("pwr")
+# install.packages("patchwork")
+# install.packages("janitor")
 
 library(pwr)
 library(tidyverse)

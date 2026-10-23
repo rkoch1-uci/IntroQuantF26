@@ -862,7 +862,7 @@ All_Territories_area_mass <- All_Territories |>
   mutate(area_mm2 = numbsquares * (19 * 19)) |>
   # create a new column for territory area in mm^2 using the "numbsquares" column
          # mesh = 19 mm x 19 mm 
-  mutate(mass_g = 0.000009*size_mm ^ 3.0471)
+  mutate(mass_g = 0.00009*size_mm ^ 3.0471)
   # create a new column for limpet body mass
   # formula: mass_g = 0.00009*length ^ 3.0471
 
@@ -1036,7 +1036,7 @@ log_model_lm = summary(log_model)
 # Visualizing results
 log_model_lm
 
-# The formula is y = 0.89031ln(x) + 10.26165
+# The formula is y = 0.89031ln(x) + 8.2116
 ```
 
 **The formula for the best fit line can be extracted from the model summary. The two values in the Estimate column are the coefficients - (Intercept) gives the y-intercept, and the variable gives the slope.**
@@ -1071,7 +1071,7 @@ FenbergTerr |> ggplot() +
   ) +
   theme_bw() +
   geom_point() +
-  geom_smooth(se = FALSE)
+  geom_smooth(method = "lm" ,se = FALSE)
 
 ## Find the slope and intercept of the best fit line
 
