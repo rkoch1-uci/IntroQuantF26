@@ -24,7 +24,7 @@ library(tidyverse)
 **Load Data**
 
 ```{r}
-load(file = "Demo Data Files/S4E2e.RData")
+load(file = "Demo Data Files/S4E2e.RData/S4Ezew")
 ```
 
 This time let's work with a dataset that has tested TWO factors.
