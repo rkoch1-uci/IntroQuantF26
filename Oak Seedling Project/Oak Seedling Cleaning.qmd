@@ -1,0 +1,95 @@
+---
+title: "Oak Seedlings"
+format: html
+editor: visual
+---
+
+## Oak Seedlings Project
+
+```{r}
+library(tidyverse)
+
+library(googlesheets4)
+
+Height_Data_Raw <- read_sheet("https://docs.google.com/spreadsheets/d/19MYOMFHIG1VxHvqBHCDd6DUvH_IJGpFXzwnos60RWtY/edit?gid=472361920#gid=472361920", sheet = "Seedling Heights")
+
+LICOR_Data_Raw <- read_sheet("https://docs.google.com/spreadsheets/d/19MYOMFHIG1VxHvqBHCDd6DUvH_IJGpFXzwnos60RWtY/edit?gid=472361920#gid=472361920", sheet = "LICOR")
+
+Moist_Data_Raw <- read_sheet("https://docs.google.com/spreadsheets/d/19MYOMFHIG1VxHvqBHCDd6DUvH_IJGpFXzwnos60RWtY/edit?gid=472361920#gid=472361920", sheet = "Soil Moisture",na = "NA" )
+
+SPAD_Data_Raw <- read_sheet("https://docs.google.com/spreadsheets/d/19MYOMFHIG1VxHvqBHCDd6DUvH_IJGpFXzwnos60RWtY/edit?gid=472361920#gid=472361920", sheet = "SPAD", na = "NA")
+```
+
+## Height
+
+```{r}
+Height_Data_Clean <- 
+  Height_Data_Raw |> 
+  select(Date, Block, Tag_Num, Treatment, Sapling_AB_etc, Seedling_Ht_cm, Dead_Alive ) |> 
+  filter(Dead_Alive == "Alive", Treatment != "NR")
+
+
+Height_Data_Clean |> group_by(Block, Treatment) |> count()
+
+Height_Data_Clean |> group_by(Treatment) |> count()
+
+
+Height_Data_Clean |> ggplot(aes(x = Block, fill = Treatment)) + geom_bar()
+
+
+Height_Data_Clean |> ggplot(aes(x = Treatment, y = Seedling_Ht_cm)) + geom_boxplot()
+
+
+Height_model <- lm(Seedling_Ht_cm ~ Treatment +Block, data = Height_Data_Clean)
+
+anova(Height_model)
+```
+
+## Moisture
+
+Why is there moisture data taken for Natural Recruits? WTF is that?
+
+```{r}
+Moist_Data_Clean <- Moist_Data_Raw |> 
+  mutate(VWC_mean = (VWC1_perc + VWC2_perc + VWC3_perc)/3,
+         PER_mean = (PER1_ms + PER2_ms + PER3_ms)/3,
+         VWC_mean = case_when(
+           is.na(VWC_mean) == TRUE ~ VWC1_perc,
+           TRUE ~ VWC_mean),
+         PER_mean = case_when(
+           is.na(PER_mean) == TRUE ~ PER1_ms, 
+           TRUE ~ PER_mean
+         )) |> 
+  drop_na(VWC_mean) |> 
+  select(Date, Block, Treatment, VWC_mean, PER_mean)
+
+Moist_Data_Clean |> ggplot(aes(x = Treatment)) + geom_bar()
+
+Moist_Data_Clean |> ggplot(aes(x = Treatment, y = VWC_mean)) +
+  stat_summary(fun = mean, geom = "col") + 
+  stat_summary(fun.x = mean_se, geom = "errorbar", width = 0.2)
+```
+
+## SPAD
+
+```{r}
+SPAD_Data_Clean <- SPAD_Data_Raw |> 
+  filter(Dead_Alive == "Alive") |> 
+  rowwise() |> 
+  mutate(SPAD_mean = mean(c_across(8:13), na.rm = TRUE)) |> 
+  select(Date, Block, Treatment, Tag_Num, SPAD_mean)
+
+SPAD_Data_Clean |> ggplot(aes(x = Treatment, y = SPAD_mean)) +
+  stat_summary(fun = mean, geom = "col") + 
+  stat_summary(fun.x = mean_se, geom = "errorbar", width = 0.2)
+
+SPAD_model <- lm(SPAD_mean ~ Treatment + Block, data = SPAD_Data_Clean)
+
+anova(SPAD_model)
+```
+
+## LICOR
+
+```{r}
+
+```
