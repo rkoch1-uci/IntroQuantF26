@@ -1,6 +1,6 @@
 ---
 title: "Oaks_Cleaning_EDA_template"
-author: Amy King-Henry
+author: Ryan Koch
 datemodified: October 29, 2026
 format: html
 editor: visual
@@ -140,6 +140,80 @@ In this section we will look at and clean up each of the data sets you identifie
 You may be either examining `SPAD_Data_Raw`, `Height_Data_Raw`, `LICOR_Data_Raw`, or `Moist_Data_Raw` for your ANOVA question. Examine your data set using the diagnostic functions I've given you above in the How to Examine and Clean Data section.
 
 ```{r}
+# Visual verification for any weird values
+SPAD_Data_Raw
+
+## Cleaning SPAD data
+SPAD_Data_Clean = SPAD_Data_Raw |>
+  
+  # Filtering out NA rows (there's a billion for some reason) with filter()
+  filter(is.na(Treatment) == FALSE) |>
+
+  # Creating new column for sapling number with separate(), starting at character 3
+  separate(Tag_Num,
+           c("Tag_Num", "Sapling_Num"), 
+           3, extra = "merge", fill = "right"
+  ) |>
+
+  # Converting Sapling_Num into characters and adding NA values where applicable
+  # with mutate() and case_when()
+  mutate(Sapling_Num = case_when(
+    Sapling_Num == "A1" ~ "A",
+    Sapling_Num == "A2" ~ "B",
+    Sapling_Num == "A3" ~ "C",
+    is.na(Sapling_Num) == TRUE ~ NA
+    )
+  )
+
+# Visual verification
+SPAD_Data_Clean
+
+## Removing QAQC columns to the right of Notes by identifying its column number with which() and then selecting only the columns to the left
+Notes_colnum_SPAD = which(colnames(SPAD_Data_Clean) == "Notes")
+SPAD_Data_Clean = SPAD_Data_Clean[1:16]
+
+# Visual verification
+SPAD_Data_Clean
+
+## Pivoting long with pivot_longer() to create Leaf_Num column
+
+# Creating column of unique identifier numbers with mutate()
+SPAD_Data_Clean = SPAD_Data_Clean |>
+  mutate(ID_num = row_number())
+
+# Visual verification
+SPAD_Data_Clean
+
+# Converting Leaf columns into Leaf_Num column with pivot_longer()
+SPAD_Data_Clean = SPAD_Data_Clean |>
+  pivot_longer(names_to = "Leaf_Num", values_to = "SPAD_Value", cols = 9:14) |>
+  
+  # Removing "Leaf" from Leaf_Num with separate()
+  separate(Leaf_Num,
+    c("Leaf", "Leaf_Num"), 
+    4, extra = "merge", fill = "right"
+  ) |>
+
+  # Removing excessive duplicated columns (Notes and ID_num) as well as Leaf with
+  # select()
+  select(-Leaf, -Notes)
+
+# Visual verification
+SPAD_Data_Clean
+
+## Separating dead plants into a new variable with filter()
+SPAD_Data_Dead = SPAD_Data_Clean |>
+  filter(Num_leaves == 0)
+
+# Visual verification
+SPAD_Data_Dead
+
+## Using filter() again to store live plant data in a variable
+SPAD_Data_Alive = SPAD_Data_Clean |>
+  filter(Num_leaves != 0)
+
+# Visual verification
+SPAD_Data_Alive
 
 ```
 
@@ -156,9 +230,17 @@ Height_Data <- Height_Data_Raw |>
   
   # use notes like this to create a checklist of the things that need to be fixed, then you can fill in code between each line as you fix them. 
 
-  # Thing to fix #2
-
-  # Thing to fix #3
+  # Thing to fix #1: Remove NA rows
+  filter(is.na(Treatment) == FALSE) |>
+  
+  # Thing to fix #2: Changing alphanumeric Sapling_AB_etc values to characters
+  mutate(Sapling_AB_etc = case_when(
+    Sapling_AB_etc == "A1" ~ "A",
+    Sapling_AB_etc == "A2" ~ "B",
+    Sapling_AB_etc == "A3" ~ "C",
+    is.na(Sapling_AB_etc) == TRUE ~ NA
+    )
+  )
 ```
 
 ### Regression dataset
@@ -166,13 +248,90 @@ Height_Data <- Height_Data_Raw |>
 Repeat the steps you took for your ANOVA data for your second data set of choice/
 
 ```{r}
+## Both of my research questions use the SPAD data set, going to arbitrarily clean the soil moisture data set here since it's the most likely candidate for a data set I'd use during exploration
+
 # View data set
+Moist_Data_Raw
 ```
 
 ```{r}
-Data <- _Raw |> 
+Moist_Data_Clean <- Moist_Data_Raw |> 
    
-  #Things to Fix
+  # Removing excess NA rows with filter()
+  filter(is.na(Treatment) == FALSE) |>
+  
+  # Changing "NA" to actual native NA value with mutate() and case_when()
+  mutate(VWC1_perc = case_when(
+    VWC1_perc == "NA" ~ NA,
+    VWC1_perc != "NA" ~ VWC1_perc
+    )
+  ) |>
+  mutate(PER1_ms = case_when(
+    PER1_ms == "NA" ~ NA,
+    PER1_ms != "NA" ~ PER1_ms
+    )
+  ) |>
+  mutate(VWC2_perc = case_when(
+    VWC2_perc == "NA" ~ NA,
+    VWC2_perc != "NA" ~ VWC2_perc
+    )
+  ) |>
+  mutate(PER2_ms = case_when(
+    PER2_ms == "NA" ~ NA,
+    PER2_ms != "NA" ~ PER2_ms
+    )
+  ) |>
+  mutate(VWC3_perc = case_when(
+    VWC3_perc == "NA" ~ NA,
+    VWC3_perc != "NA" ~ VWC3_perc
+    )
+  ) |>
+  mutate(PER3_ms = case_when(
+    PER3_ms == "NA" ~ NA,
+    PER3_ms != "NA" ~ PER3_ms
+    )
+  )
+
+# Visual verification
+Moist_Data_Clean
+
+## Removing QAQC columns to the right of Notes by identifying its column number with which() and then selecting only the columns to the left
+Notes_colnum_Moist = which(colnames(Moist_Data_Clean) == "Notes")
+Moist_Data_Clean = Moist_Data_Clean[1:12]
+
+# Visual verification
+Moist_Data_Clean
+
+## Pivoting long with pivot_longer() to create Leaf_Num column
+
+# Creating column of unique identifier numbers with mutate()
+Moist_Data_Clean = Moist_Data_Clean |>
+  mutate(ID_num = row_number())
+
+# Visual verification
+Moist_Data_Clean
+
+# Converting VWC/PER columns into VWC_or_PER and value columns with pivot_longer()
+Moist_Data_Clean = Moist_Data_Clean |>
+  pivot_longer(names_to = "VWC_or_PER", values_to = "value", cols = 6:11) |>
+  
+  # Removing tail end of name from VWC_or_PER with separate()
+  separate(VWC_or_PER,
+    c("VWC_or_PER", "type"), 
+    "_"
+  ) |>
+  
+  # Separating VWC_or_PER again with separate() to create a new measure_num column
+  separate(VWC_or_PER,
+    c("VWC_or_PER", "measure_num"),
+    3, extra = "merge", fill = "right"
+  ) |>
+  
+  # Removing type and Notes columns with select()
+  select(-type, -Notes)
+
+# Visual verification
+Moist_Data_Clean
 ```
 
 ## Exploratory Data Analysis
@@ -191,6 +350,232 @@ Not sure where to start?
 
 Go for it!
 
-```{r}
+## Exploration of Survivorship
 
+```{r}
+## Visualizing survivorship trends across plants
+
+# Generating bar plot of overall plant survivorship using ggplot() + geom_bar()
+SPAD_Data_Clean |> ggplot() +
+  aes(x = Dead_Alive) +
+  geom_bar(aes(fill = Dead_Alive), color = "black") +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    x = "Survivorship",
+    y = "Count",
+    title = "Overall survivorship for oak saplings"
+  )
+
+# Repeating plot but faceting for treatment with facet_wrap()
+SPAD_Data_Clean |> ggplot() +
+  aes(x = Dead_Alive) +
+  geom_bar(aes(fill = Dead_Alive), color = "black") +
+  facet_wrap(~Treatment) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    x = "Survivorship",
+    y = "Count",
+    title = "Overall survivorship for oak saplings"
+  )
+
+```
+
+## Exploration of Leaf Count (SPAD Data)
+
+```{r}
+## Generating density plots to visualize trends in leaf counts
+
+# Creating density plot of overall leaf counts with ggplot() + geom_histogram()
+SPAD_Data_Clean |> ggplot() +
+  aes(x = Num_leaves) +
+  geom_density(fill = "salmon", color = "black", alpha = 0.5, binwidth = 5) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(x = "Number of leaves",
+    y = "Density (count = 102)",
+    title = "Density of leaf counts across all plants"
+  )
+
+# Repeating but with only live plant data
+SPAD_Data_Alive |> ggplot() +
+  aes(x = Num_leaves) +
+  geom_density(fill = "salmon", color = "black", alpha = 0.5, binwidth = 5) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(x = "Number of leaves",
+       y = "Density (count = 78)",
+       title = "Density of leaf counts across all living plants"
+  )
+
+## Exploring trends in leaf counts further to see if there's a reason for the strong leftward skew
+
+# Generating box plot with ggplot() + geom_boxplot() for Alive data
+SPAD_Data_Alive |> ggplot() +
+  aes(x = Treatment, y = Num_leaves) +
+  geom_boxplot(aes(fill = Treatment), color = "black") +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(x = "Treatment",
+       y = "Number of leaves",
+       title = "Number of leaves across all living plants per treatment"
+  )
+
+# Log-transforming leaf count data so this doesn't look quite as insane
+SPAD_Data_Alive |> ggplot() +
+  aes(x = Treatment, y = log(Num_leaves)) +
+  geom_boxplot(aes(fill = Treatment), color = "black") +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(x = "Treatment",
+       y = "Log number of leaves",
+       title = "Log number of leaves across all living plants per treatment"
+  )
+```
+
+## Exploration of SPAD Values (SPAD Data)
+
+```{r}
+## Generating density plots to visualize overall trends in SPAD value
+
+# Generating density plot of overall SPAD values with ggplot() + geom_density(). Defaulting to SPAD_Data_Alive since dead plants don't have SPAD values
+SPAD_Data_Alive |> ggplot() +
+  aes(x = SPAD_Value) +
+  geom_density(fill = "salmon", color = "black", alpha = 0.5, binwidth = 4) +
+  theme_bw() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(x = "SPAD value",
+       y = "Density (count = 102)",
+       title = "Density of SPAD values across all living plants"
+  )
+
+## Checking for trends that could explain skew using box plots
+
+# Generating box plot of SPAD values by treament with ggplot() + geom_boxplot()
+SPAD_Data_Alive |> ggplot() +
+  aes(x = Treatment, y = SPAD_Value) +
+  geom_boxplot(aes(fill = Treatment)) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(x = "Treatment",
+       y = "SPAD value",
+       title = "SPAD valuea across all living plants per treatment"
+  )
+
+## Creating summary statistics of SPAD values
+
+# Saving number of distinct values
+Total_SPAD = SPAD_Data_Clean |>
+  distinct(ID_num) |>
+  summarise(
+    n = n()
+  )
+
+Total_SPAD = Total_SPAD$n
+
+# Generating summary statistics for SPAD values from living plants with summarise()
+SPAD_summary = SPAD_Data_Alive |>
+  group_by(Treatment) |>
+  summarise(
+    mean_SPAD = mean(SPAD_Value, na.rm = TRUE),
+    sd_SPAD = sd(SPAD_Value, na.rm = TRUE),
+    se_SPAD = sd_SPAD/sqrt(Total_SPAD)
+  )
+
+# Visual verification
+SPAD_summary
+
+## Visualizing summary statistics
+
+# Generating column plot of summary statistics with ggplot() + geom_col()
+SPAD_summary |> ggplot() +
+  aes(x = Treatment, y = mean_SPAD) +
+  geom_col(aes(fill = Treatment), color = "black") +
+  geom_errorbar(aes(
+    ymin = mean_SPAD - se_SPAD,
+    ymax = mean_SPAD + se_SPAD
+    ),
+    position = position_dodge(0.9), width = 0.2
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(x = "Treatment",
+       y = "Mean SPAD value",
+       title = "Mean SPAD value per treatment"
+  )
+```
+
+## Exploration of Soil Moisture Data
+
+```{r}
+## Visualizing overall soil moisture trends
+
+# Saving number of distinct values
+Total_Moist = Moist_Data_Clean |>
+  distinct(ID_num) |>
+  summarise(
+    n = n()
+  )
+
+Total_Moist = Total_Moist$n
+
+# Generating summary statistics for Moist_Data_Clean with summarize()
+Moist_summary = Moist_Data_Clean |>
+  summarise(
+    .by = c(VWC_or_PER, Treatment),
+    mean = mean(as.double(value), na.rm = TRUE),
+    sd = sd(as.double(value), na.rm = TRUE),
+    se = sd/sqrt(Total_Moist)
+  ) |>
+  
+  # Removing NA values with filter()
+  filter(is.na(se) == FALSE)
+
+# Visual verification
+Moist_summary
+
+# Generating column plot of mean moisture measurements with ggplot() + geom_col()
+Moist_summary |> ggplot() +
+  aes(x = Treatment, y = mean) +
+  geom_col(aes(fill = VWC_or_PER), color = "black", position = position_dodge()) +
+  geom_errorbar(aes(
+    ymin = mean - se,
+    ymax = mean + se
+    ),
+    position = position_dodge(0.9), width = 0.2
+  )
 ```
