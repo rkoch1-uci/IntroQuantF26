@@ -827,4 +827,24 @@ Height data had similar noise to our leaf count data due to the presence of mult
 ```{r}
 ## Combining SPAD and Soil Moisture tibbles
 
+Moist_condensed = Moist_Data_Clean |>
+  
+  # Removing PER measurements with filter()
+  filter(VWC_or_PER == "VWC") |>
+  
+  # Condensing VWC measurements to an average of the three measurements with
+  # summarise()
+  group_by(Treatment, Block) |>
+  mutate(
+    VWC = mean(as.double(value))
+  ) |>
+  
+  # Removing excess columns with select()
+  select(-VWC_or_PER, -measure_num, -value) |>
+  
+  # Removing duplicate rows with distinct()
+  distinct(VWC, .keep_all = TRUE)
+
+# Visual verification
+Moist_condensed
 ```
