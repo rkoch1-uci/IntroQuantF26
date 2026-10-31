@@ -143,13 +143,13 @@ You may be either examining `SPAD_Data_Raw`, `Height_Data_Raw`, `LICOR_Data_Raw`
 # Visual verification for any weird values
 SPAD_Data_Raw
 
-## Cleaning SPAD data
+# Cleaning SPAD data
 SPAD_Data_Clean = SPAD_Data_Raw |>
   
   # Filtering out NA rows (there's a billion for some reason) with filter()
   filter(is.na(Treatment) == FALSE) |>
 
-  # Creating new column for sapling number with separate(), starting at character 3
+  # Creating new column for sapling number with separate()
   separate(Tag_Num,
            c("Tag_Num", "Sapling_Num"), 
            3, extra = "merge", fill = "right"
@@ -168,14 +168,12 @@ SPAD_Data_Clean = SPAD_Data_Raw |>
 # Visual verification
 SPAD_Data_Clean
 
-## Removing QAQC columns to the right of Notes by identifying its column number with which() and then selecting only the columns to the left
+# Removing QAQC columns to the right of Notes by identifying its column number with which() and then selecting only the columns to the left
 Notes_colnum_SPAD = which(colnames(SPAD_Data_Clean) == "Notes")
 SPAD_Data_Clean = SPAD_Data_Clean[1:16]
 
 # Visual verification
 SPAD_Data_Clean
-
-## Pivoting long with pivot_longer() to create Leaf_Num column
 
 # Creating column of unique identifier numbers with mutate()
 SPAD_Data_Clean = SPAD_Data_Clean |>
@@ -194,24 +192,20 @@ SPAD_Data_Clean
     4, extra = "merge", fill = "right"
   ) |>
 
-  # Removing excessive duplicated columns (Notes and ID_num) as well as Leaf with
-  # select()
-  select(-Leaf, -Notes, -ID_num) |>
-  
-  # Filtering out NA values of SPAD_Value with filter()
-  filter(is.na(SPAD_Value) == FALSE)
+  # Removing Notes and Leaf with select()
+  select(-Leaf, -Notes)
   
 # Visual verification
 SPAD_Data_Clean
 
-## Separating dead plants into a new variable with filter()
+# Separating dead plants into a new variable with filter()
 SPAD_Data_Dead = SPAD_Data_Clean |>
   filter(Num_leaves == 0)
 
 # Visual verification
 SPAD_Data_Dead
 
-## Using filter() again to store live plant data in a variable
+# Using filter() again to store live plant data in a variable
 SPAD_Data_Alive = SPAD_Data_Clean |>
   filter(Num_leaves != 0)
 
@@ -273,6 +267,7 @@ Moist_Data_Raw
 ```
 
 ```{r}
+# Cleaning soil moisture data
 Moist_Data_Clean <- Moist_Data_Raw |> 
    
   # Removing excess NA rows with filter()
@@ -313,14 +308,12 @@ Moist_Data_Clean <- Moist_Data_Raw |>
 # Visual verification
 Moist_Data_Clean
 
-## Removing QAQC columns to the right of Notes by identifying its column number with which() and then selecting only the columns to the left
+# Removing QAQC columns to the right of Notes by identifying its column number with which() and then selecting only the columns to the left
 Notes_colnum_Moist = which(colnames(Moist_Data_Clean) == "Notes")
 Moist_Data_Clean = Moist_Data_Clean[1:12]
 
 # Visual verification
 Moist_Data_Clean
-
-## Pivoting long with pivot_longer() to create Leaf_Num column
 
 # Creating column of unique identifier numbers with mutate()
 Moist_Data_Clean = Moist_Data_Clean |>
@@ -346,10 +339,7 @@ Moist_Data_Clean = Moist_Data_Clean |>
   ) |>
   
   # Removing type and Notes columns with select()
-  select(-type, -Notes, -ID_num) |>
-  
-  # Removing NA measurements with filter()
-  filter(is.na(value) == FALSE)
+  select(-type, -Notes, -ID_num)
 
 # Visual verification
 Moist_Data_Clean
@@ -373,9 +363,9 @@ Go for it!
 
 ## Exploration of Survivorship
 
-```{r}
-## Visualizing survivorship trends across plants
+### Visualizing survivorship trends across plants
 
+```{r}
 # Generating bar plot of overall plant survivorship using ggplot() + geom_bar()
 SPAD_Data_Clean |> ggplot() +
   aes(x = Dead_Alive) +
@@ -392,25 +382,7 @@ SPAD_Data_Clean |> ggplot() +
     title = "Overall survivorship for oak saplings"
   )
 
-# Repeating plot but faceting for treatment with facet_wrap()
-SPAD_Data_Clean |> ggplot() +
-  aes(x = Dead_Alive) +
-  geom_bar(aes(fill = Dead_Alive), color = "black") +
-  facet_wrap(~Treatment) +
-  theme_bw() +
-  theme(
-    legend.position = "none",
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank()
-  ) +
-  labs(
-    x = "Survivorship",
-    y = "Count",
-    title = "Overall survivorship for oak saplings",
-    subtitle = "Faceted by treatment"
-  )
-
-# Changing visuals to facet by Dead_Alive, again using facet_wrap(), and coloring based on Treatment instead
+# Repeating plot but faceting for Dead_Alive using facet_wrap() and coloring based on Treatment
 SPAD_Data_Clean |> ggplot() +
   aes(x = Treatment) +
   geom_bar(aes(fill = Treatment), color = "black", position = position_dodge()) +
@@ -430,13 +402,13 @@ SPAD_Data_Clean |> ggplot() +
 
 ```
 
-Survivorship isn't a primary focus of my research questions but I did want to lead with a broad visualization of survival rates for two reasons. The first was just to gauge how well the saplings had survived to see if the plantings were overall successful. Second, I wanted to identify potential differences in survival rates between treatments. Seeing that they appeared to have fared pretty well in terms of survival, I faceted the plot further to see if I could see any major differences when splitting the data by treatment and did think that there appeared to be some interesting trends between the groups. Since the scale of the graph was limiting my ability to compare values conveniently I redid the plot one final time, swapping the facet to survivorship and filling by treatment instead, which did confirm that there's some interesting variance in survival rates between treatments that could be work exploring during my data analysis.
+Survivorship isn't a primary focus of my research questions but I did want to lead with a broad visualization of survival rates for two reasons. The first was just to gauge how well the saplings had survived to see if the plantings were overall successful. Second, I wanted to identify potential differences in survival rates between treatments. Seeing that they appeared to have fared pretty well in terms of survival, I faceted the plot further to see if there were any treatments that had outlier survival or death rates. Adult canopy and natural recruit were comparable in terms of survival, with dead tree lagging slightly behind, but open sky did seem to be markedly lower in terms of survival. Death rates, however, seemed to be different between all four treatments. Natural recruits notably was the only treatment with zero deaths whatsoever. Open sky is a harsher environment due to the constant sun exposure and heat, explaining why it has less survivors and more deaths than other treatments, but it is unclear why no natural recruits died or if the differences between the other treatments are significant.
 
 ## Exploration of Leaf Count (SPAD Data)
 
-```{r}
-## Generating density plots to visualize trends in leaf counts
+### Generating density plots to visualize trends in leaf counts
 
+```{r}
 # Creating density plot of overall leaf counts with ggplot() + geom_histogram()
 SPAD_Data_Clean |> ggplot() +
   aes(x = Num_leaves) +
@@ -465,8 +437,13 @@ SPAD_Data_Alive |> ggplot() +
        title = "Density of leaf counts across all living plants"
   )
 
-## Removing data with multiple saplings and selecting the ones with the highest leaf count
+```
 
+I initially started with histogram visuals here but found that the saplings with high numbers of leaves were resulting in very confusing visuals, leading me to switch to density plots. The density plot for the overall data was a nice trend but had some weird warping close to 0 leaves, which I predicted to be skew caused by the dead saplings and thus repeated the visuals with live plants only. Removing these data did fix the warping, but the remaining data were still skewed heavily to the left. I was unsure of why, beyond there being saplings with extremely high leaf counts relative to others, so I chose to explore further.
+
+### Exploring trends in leaf counts further to see if there's a reason for the strong leftward skew
+
+```{r}
 # Filtering out data with multiple saplings with filter()
 SPAD_Data_multiple = SPAD_Data_Alive |>
   group_by(Tag_Num) |>
@@ -481,8 +458,6 @@ SPAD_Data_multiple = SPAD_Data_Alive |>
 # Visual verification
 SPAD_Data_multiple
 
-## Adding transformed sapling subsample back to the main data set
-
 # Generating intermediate tibble without multiple saplings using filter()
 SPAD_Data_temp = SPAD_Data_Alive |>
   filter(is.na(Sapling_Num) == TRUE)
@@ -495,8 +470,6 @@ SPAD_Data_no_multiple = bind_rows(SPAD_Data_temp, SPAD_Data_multiple)
 
 # Visual verification
 SPAD_Data_no_multiple
-
-## Exploring trends in leaf counts further to see if there's a reason for the strong leftward skew
 
 # Generating box plot with ggplot() + geom_boxplot() for Alive data
 SPAD_Data_no_multiple |> ggplot() +
@@ -528,8 +501,13 @@ SPAD_Data_no_multiple |> ggplot() +
        title = "Log number of leaves across all living plants per treatment"
   )
 
-## Visualizing trends in mean leaf count
+```
 
+I decided to switch to box plots to allow for clearer visualization of trends on a finer scale than density plots would cleanly allow, and condensed tags containing multiple saplings down to the single sapling bearing the most leaves first to remove noise. The initial box plot showed some clear differences in leaf counts between treatments but was hard to interpret due to the huge gap between the natural recruits and every other group. As such, I transformed the data by taking the natural log of the leaf count to normalize it more and allow for better comparison of my data. Log leaf count is comparable for adult canopy and dead tree, higher in open sky, and highest in natural recruits. This could be due to varying light levels in the microhabitat at each treatment – a canopy or dead tree could shelter saplings and result in less leaf development versus a natural recruit that's spaced itself comfortably or our saplings planted in an open area.
+
+### Visualizing trends in mean leaf count
+
+```{r}
 # Generating summary statistics for leaf count with summarise()
 Leaf_summary = SPAD_Data_no_multiple |>
   group_by(Treatment) |>
@@ -550,8 +528,8 @@ Leaf_summary |> ggplot() +
   geom_errorbar(aes(
     ymin = mean_count - se_count,
     ymax = mean_count + se_count
-    ),
-    width = 0.2
+  ),
+  width = 0.2
   ) +
   theme_bw() +
   theme(
@@ -565,17 +543,16 @@ Leaf_summary |> ggplot() +
     title = "Mean leaf count by treatment",
     subtitle = "Counting only the sapling with the most leaves at each tag"
   )
+
 ```
 
-I initially started with histogram visuals here but found that the saplings with high numbers of leaves were resulting in very confusing visuals, leading me to switch to density plots. The density plot for the overall data was a nice trend but had some weird warping close to 0 leaves, which I predicted to be skew caused by the dead saplings and removed in a subsequent plot of data from living saplings only. There was still a very strong skew toward the left and I decided to switch to box plots to allow for clearer visualization of trends on a finer scale than density plots would cleanly allow. I condensed tags containing multiple saplings down to the single sapling bearing the most leaves first to remove noise from tags with more than one sapling first. The initial box plot showed some clear differences in leaf counts between treatments but was hard to interpret due to the huge gap between the natural recruits and every other group. As such, I transformed the data by taking the natural log of the leaf count to normalize it more and allow for better comparison of my data. There is a clear difference in leaf count between treatments that has solidified my choice to investigate leaf count in my data analysis. It is worth noting that I ignored the dead sapling data here because dead trees don't have leaves, which is the same reason I use only live sapling data for my SPAD exploration.
-
-I followed up these visualizations of overall trends by generating summary statistics for leaf count and creating a column plot to visualize mean leaf count across treatments, just as an extra step to confirm the trends spotted in my normalized box plot by comparing overlap in standard error. The output is consistent with the box plot but was included as additional proof of potentially significant differences between treatments.
+I decided to create a column plot to visualize mean leaf count across treatments as an extra step to confirm the trends spotted in my normalized box plot by comparing overlap in standard error. The output is consistent with the box plot – adult canopy and dead tree are comparable, open sky is higher, and natural recruits are highest, but was included as additional proof of potentially significant differences between treatments since the ability to compare errors allows for finer comparison than the box plot.
 
 ## Exploration of SPAD Values (SPAD Data)
 
-```{r}
-## Generating density plots to visualize overall trends in SPAD value
+### Generating density plots to visualize overall trends in SPAD value
 
+```{r}
 # Generating density plot of overall SPAD values with ggplot() + geom_density(). Defaulting to SPAD_Data_Alive since dead plants don't have SPAD values
 SPAD_Data_Alive |> ggplot() +
   aes(x = SPAD_Value) +
@@ -590,8 +567,13 @@ SPAD_Data_Alive |> ggplot() +
        title = "Density of SPAD values across all living plants"
   )
 
-## Checking for trends that could explain skew using box plots
+```
 
+I followed a similar line of visualization for the SPAD data as the leaf count data, beginning with a density plot to observe overall trends in SPAD value before delving deeper. Our data look surprisingly normal, sans the long tail to the right resulting from some high SPAD value measurements, and has very high kurtosis that suggests a clustering around roughly thirty-five SPADs (estimated by eye).
+
+### Checking for trends that could explain density trends using box plots
+
+```{r}
 # Generating box plot of SPAD values by treament with ggplot() + geom_boxplot()
 SPAD_Data_Alive |> ggplot() +
   aes(x = Treatment, y = SPAD_Value) +
@@ -607,8 +589,13 @@ SPAD_Data_Alive |> ggplot() +
        title = "SPAD valuea across all living plants per treatment"
   )
 
-## Creating summary statistics of SPAD values
+```
 
+I decided to generate box plots next to compare the interquartile range and median SPAD value across treatments to gauge variance across the four treatments. The results are comparable at a glance, with IQRs not differing too much between the four, but natural recruits and open sky do seem to fall just barely lower than adult canopy or dead tree.
+
+### Comparing mean SPAD values between treatments
+
+```{r}
 # Saving number of distinct values
 Total_SPAD = SPAD_Data_Clean |>
   distinct(ID_num) |>
@@ -630,8 +617,6 @@ SPAD_summary = SPAD_Data_Alive |>
 # Visual verification
 SPAD_summary
 
-## Visualizing summary statistics
-
 # Generating column plot of summary statistics with ggplot() + geom_col()
 SPAD_summary |> ggplot() +
   aes(x = Treatment, y = mean_SPAD) +
@@ -639,8 +624,8 @@ SPAD_summary |> ggplot() +
   geom_errorbar(aes(
     ymin = mean_SPAD - se_SPAD,
     ymax = mean_SPAD + se_SPAD
-    ),
-    position = position_dodge(0.9), width = 0.2
+  ),
+  position = position_dodge(0.9), width = 0.2
   ) +
   theme_bw() +
   theme(
@@ -654,13 +639,13 @@ SPAD_summary |> ggplot() +
   )
 ```
 
-I followed a similar line of visualization for the SPAD data as the leaf count data, beginning with a density plot that looked surprisingly normal before narrowing my focus more using a box plot to compare trends between treatments. The density plot looked shockingly normal and the box plots were surprisingly similar, albeit the extent of their similarities was unclear due to the huge outliers in our data. I decided to pivot to a column plot to compare averages between treatments since I felt that comparing mean SPAD values would be the best way to visualize the extent of similarity between treatments. Standard error calculations performed as part of generating summary statistics to draw the column plot show that there is actually some potential difference between treatments, albeit small, which is something worth investigating even if it doesn't align with expectations from my hypothesis.
+I decided to pivot to a column plot to compare averages between treatments since the addition of standard error bars would let me visualize the extent of similarity between treatments. Standard error calculations performed as part of generating summary statistics to draw the column plot show that there is actually some potential difference between natural recruits + open sky and adult canopy + dead tree, confirming the deviation spotted in the box plots.
 
 ## Exploration of Soil Moisture Data
 
-```{r}
-## Visualizing overall soil moisture trends
+### Visualizing overall soil moisture trends
 
+```{r}
 # Generating summary statistics for Moist_Data_Clean with summarize()
 Moist_summary = Moist_Data_Clean |>
   group_by(VWC_or_PER, Treatment) |>
@@ -721,13 +706,13 @@ Moist_summary |> ggplot() +
 
 ```
 
-I figured I'd play around with the soil moisture data since I had it cleaned already. Rather than attempting to draw a broad visual with a histogram I opted to go straight for a column plot – our soil measurements being fractured among multiple measurements of two different metrics made R *really* hate the box plot I tried to make. I generated summary statistics for the soil moisture data and began by graphing the mean measurements of VWC and PER by treatment, which wasn't immediately useful due to the massive difference between the two values. A second attempt with the facets swapped to split the plots by measurement type and place treatment on the x-axis instead yielded better results in terms of actually being able to compare PER values across treatments. Natural recruits appear to have a different value for both, with standard error implying a hefty degree of overlap for the other three treatments, and given how the recruits have been consistently appearing odd compared to the other groups I may investigate soil moisture depending on the outcome of statistical analysis on the SPAD data.
+I figured I'd play around with the soil moisture data since I had it cleaned already. Rather than attempting to draw a broad visual with a histogram I opted to go straight for a column plot – our soil measurements being fractured among multiple measurements of two different metrics made R *really* hate the box plot I tried to make. I generated summary statistics for the soil moisture data and began by graphing the mean measurements of VWC and PER by treatment, which wasn't immediately useful due to the massive difference between the two values. A second attempt with the facets swapped to split the plots by measurement type and place treatment on the x-axis instead yielded better results in terms of actually being able to compare PER values across treatments. Natural recruits appear to be the only group that differs in their PER and VWC measurements, running lower than the other three, while standard error implying a hefty degree of overlap for the other three treatments. It's possible that the natural recruits are larger than the saplings grown under the other three treatments, resulting in much higher water uptake from local soils, and the other three being comparable is mostly consistent with prior trends from the other visualizations. I would expect open sky to have some observable difference seeing as it measured a higher leaf count and thus could be finding more success than the other two non-control treatments but that would need to be explored in other analyses.
 
 ## Exploration of Height Data
 
-```{r}
-## Transforming Height_Data further to select only the largest sapling in a group
+### Visualizing trends in height across treatments
 
+```{r}
 # Filtering out data with multiple saplings with filter()
 Height_Data_multiple = Height_Data |>
   group_by(Tag_Num) |>
@@ -742,8 +727,6 @@ Height_Data_multiple = Height_Data |>
 # Visual verification
 Height_Data_multiple
 
-## Adding transformed sapling subsample back to the main data set
-
 # Generating intermediate tibble without multiple saplings using filter()
 Height_Data_temp = Height_Data |>
   filter(is.na(Sapling_AB_etc) == TRUE)
@@ -756,8 +739,6 @@ Height_Data_no_multiple = bind_rows(Height_Data_temp, Height_Data_multiple)
 
 # Visual verification
 Height_Data_no_multiple
-
-## Visualizing trends in height across treatments
 
 # Generating box plot of heights by treatment with ggplot() + geom_boxplot()
 Height_Data_no_multiple |> ggplot() +
@@ -775,14 +756,19 @@ Height_Data_no_multiple |> ggplot() +
     fill = "Status"
   )
 
-## Removing dead seedlings with filter() because they're all 0 cm tall
+```
+
+Height data had similar noise to our leaf count data due to the presence of multiple saplings at certain tags. As such, I started by removing all but the largest saplings from the data before generating an initial overview of trends in height between treatments with a box plot. It's immediately clear that all the dead saplings are extremely dead, all clocking in at 0 cm, and thus can be removed without loss of any height data. The alive data is again reflective of past trends. Adult canopy and dead tree are similar while open sky natural recruits are higher. This does not explain why open sky had similar VWC as adult canopy or dead tree nor why its leaf count deviated from the other non-control treatments, however. This is also the first time open sky appears to have higher measurements than natural recruits (though their boxes do overlap significantly).
+
+### Comparing average height across treatments
+
+```{r}
+# Removing dead seedlings with filter() because they're all 0 cm tall
 Height_Data_no_multiple = Height_Data_no_multiple |>
   filter(Dead_Alive != "Dead")
 
 # Visual verification
 Height_Data_no_multiple
-
-## Comparing average height across treatments
 
 # Generating summary statistics for seedling height
 Height_summary = Height_Data_no_multiple |>
@@ -804,8 +790,8 @@ Height_summary |> ggplot() +
   geom_errorbar(aes(
     ymin = mean_height - se_height,
     ymax = mean_height + se_height
-    ),
-    width = 0.2
+  ),
+  width = 0.2
   ) +
   theme_bw() +
   theme(
@@ -818,15 +804,17 @@ Height_summary |> ggplot() +
     y = "Seedling height (in cm)",
     title = "Mean seedling height by treatment"
   )
+
 ```
 
-Height data had similar noise to our leaf count data due to the presence of multiple saplings at certain tags. As such, I started by removing all but the largest saplings from the data before generating an initial overview of trends in height between treatments with a box plot. This did highlight some interesting differences between treatments and I wanted to confirm this with a column plot as done in previous tests, but I first removed all the dead seedling data since they were all 0 cm. The column plot provided more detail on potential differences between treatments but also revealed that the standard error for all measurements are relatively high. This may be something to keep in mind during any statistical analysis of the height data.
+A column plot was the immediate next logical step to check why open sky data are behaving so strangely for these measurements. The answer is gratefully quite clear: the standard error for the treatment is insanely high. It overlaps with all three of the other treatments, demanding statistical analysis to evaluate what it actually differs from and/or what it overlaps with.
 
 ## Correlating SPAD Value with VWC
 
-```{r}
-## Combining SPAD and Soil Moisture tibbles
+### Combining SPAD and Soil Moisture tibbles
 
+```{r}
+# Cleaning up soil moisture data more to prep it for combination
 Moist_condensed = Moist_Data_Clean |>
   
   # Removing PER measurements with filter()
@@ -836,15 +824,86 @@ Moist_condensed = Moist_Data_Clean |>
   # summarise()
   group_by(Treatment, Block) |>
   mutate(
-    VWC = mean(as.double(value))
+    VWC = mean(as.double(value), na.rm = TRUE)
   ) |>
   
   # Removing excess columns with select()
   select(-VWC_or_PER, -measure_num, -value) |>
   
   # Removing duplicate rows with distinct()
-  distinct(VWC, .keep_all = TRUE)
+  distinct(VWC, .keep_all = TRUE) |>
+  
+  # Removing Block 4 Natural Recruits due to them having no data
+  filter(is.na(VWC) == FALSE) |>
 
 # Visual verification
 Moist_condensed
+
+# Cleaning up SPAD data more to prep it for combination, defaulting to Alive
+# data set since dead plants have no SPAD value
+SPAD_condensed = SPAD_Data_Alive |>
+  
+  # Removing Leaf_Num with select() so it doesn't complicate our math
+  select(-Leaf_Num) |>
+  
+  # Creating mean SPAD measurement for each plant with mutate()
+  group_by(Treatment, Block) |>
+  mutate(SPAD_Value = mean(SPAD_Value, na.rm = TRUE)) |>
+  
+  # Removing duplicate rows with distinct()
+  distinct(SPAD_Value, .keep_all = TRUE)
+
+# Visual verification
+SPAD_condensed
+
+# Combining tibbles with merge() to blend identical columns
+Moist_SPAD_combined = merge(SPAD_condensed, Moist_condensed)
+
+# Visual verification
+Moist_SPAD_combined
+
 ```
+
+### Visualizing SPAD Value as a Function of Soil Moisture
+
+```{r}
+# Generating scatter plot with a best-fit line using ggplot() + geom_point() + geom_smooth()
+Moist_SPAD_combined |> ggplot() +
+  aes(x = VWC, y = SPAD_Value) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_bw() +
+  labs(
+    x = "Mean volumetric water content (as a percentage)",
+    y = "Mean SPAD value",
+    title = "SPAD value as a function of volumetric water content across all treatments"
+  )
+
+# Repeating plot but faceting for treatment with facet_wrap()
+Moist_SPAD_combined |> ggplot() +
+  aes(x = VWC, y = SPAD_Value) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~Treatment) +
+  theme_bw() +
+  labs(
+    x = "Mean volumetric water content (as a percentage)",
+    y = "Mean SPAD value",
+    title = "SPAD value as a function of volumetric water content by treatment"
+  )
+
+# Repeating initial plot with log transformation to normalize data more
+Moist_SPAD_combined |> ggplot() +
+  aes(x = VWC, y = log(SPAD_Value)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_bw() +
+  labs(
+    x = "Mean volumetric water content (as a percentage)",
+    y = "Log mean SPAD value",
+    title = "Log SPAD value as a function of volumetric water content across all treatments"
+  )
+
+```
+
+I started with a visualization of SPAD value as a function of VWC for all treatments due to the small amount of data I had once the two original data sets were condensed into mean counts per block and treatment then merged. While conditions for a regression are not yet met in this graph, there is a small negative relationship between the two that (confusingly) suggests SPAD value decreases as soil moisture increases. I could only imagine this might mean that excessive soil moisture may be harming saplings and causing their leaves to darken, but this may also just be a relationship with no correlation that appears to have a negative correlation due to statistical variance. I faceted by treatment for fun to see how results vary for each of the four treatments, and while I don't think I'll be able to do a regression for this due to how sparse the data are it does at least reflect the potential for no relationship to be established in an eventual regression. I tried a log transformation to improve homogeneity of variance but this didn't help much and calls into question whether I can actually complete a regression here. I'll unfortunately only be able to determine this during my statistical analysis.
