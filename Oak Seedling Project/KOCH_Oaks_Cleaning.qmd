@@ -183,7 +183,7 @@ SPAD_Data_Clean = SPAD_Data_Clean |>
 SPAD_Data_Clean
 
 # Converting Leaf columns into Leaf_Num column with pivot_longer()
-  SPAD_Data_Clean = SPAD_Data_Clean |>
+SPAD_Data_Clean = SPAD_Data_Clean |>
   pivot_longer(names_to = "Leaf_Num", values_to = "SPAD_Value", cols = 9:14) |>
   
   # Removing "Leaf" from Leaf_Num with separate()
@@ -197,6 +197,12 @@ SPAD_Data_Clean
   
 # Visual verification
 SPAD_Data_Clean
+
+# Blanket fix for each data type that's wrong with mutate()
+SPAD_Data_Clean = SPAD_Data_Clean |>
+  mutate(Tag_Num = as.integer(Tag_Num)) |>
+  mutate(Num_leaves = as.integer(Num_leaves)) |>
+  mutate(Leaf_Num = as.integer(Leaf_Num))
 
 # Separating dead plants into a new variable with filter()
 SPAD_Data_Dead = SPAD_Data_Clean |>
@@ -251,6 +257,13 @@ Height_Data
 # Thing to fix #4: Removing QAQC data
 Notes_colnum_Height = which(colnames(Height_Data) == "Notes")
 Height_Data = Height_Data[1:10]
+
+# Visual verification
+Height_Data
+
+# Thing to fix #5: Blanket fixing data types with mutate()
+Height_Data = Height_Data |>
+  mutate(Tag_Num = as.integer(Tag_Num))
 
 # Visual verification
 Height_Data
@@ -340,6 +353,14 @@ Moist_Data_Clean = Moist_Data_Clean |>
   
   # Removing type and Notes columns with select()
   select(-type, -Notes, -ID_num)
+
+# Visual verification
+Moist_Data_Clean
+
+# Blanket fixing data types with mutate()
+Moist_Data_Clean = Moist_Data_Clean |>
+  mutate(measure_num = as.integer(measure_num)) |>
+  mutate(value = as.double(value))
 
 # Visual verification
 Moist_Data_Clean
@@ -553,8 +574,8 @@ I decided to create a column plot to visualize mean leaf count across treatments
 ### Generating density plots to visualize overall trends in SPAD value
 
 ```{r}
-# Generating density plot of overall SPAD values with ggplot() + geom_density(). Defaulting to SPAD_Data_Alive since dead plants don't have SPAD values
-SPAD_Data_Alive |> ggplot() +
+# Generating density plot of overall SPAD values with ggplot() + geom_density(). Defaulting to SPAD_Data_no_multiple since dead plants don't have SPAD values and we don't want the plots with multiple saplings biasing our data
+SPAD_Data_no_multiple |> ggplot() +
   aes(x = SPAD_Value) +
   geom_density(fill = "salmon", color = "black", alpha = 0.5) +
   theme_bw() +
@@ -569,13 +590,13 @@ SPAD_Data_Alive |> ggplot() +
 
 ```
 
-I followed a similar line of visualization for the SPAD data as the leaf count data, beginning with a density plot to observe overall trends in SPAD value before delving deeper. Our data look surprisingly normal, sans the long tail to the right resulting from some high SPAD value measurements, and has very high kurtosis that suggests a clustering around roughly thirty-five SPADs (estimated by eye).
+I followed a similar line of visualization for the SPAD data as the leaf count data, beginning with a density plot to observe overall trends in SPAD value before delving deeper. Our data look surprisingly normal, sans the long tail to the right resulting from some high SPAD value measurements, and has very high kurtosis that suggests a clustering around roughly 35 SPADs (estimated by eye).
 
 ### Checking for trends that could explain density trends using box plots
 
 ```{r}
 # Generating box plot of SPAD values by treament with ggplot() + geom_boxplot()
-SPAD_Data_Alive |> ggplot() +
+SPAD_Data_no_multiple |> ggplot() +
   aes(x = Treatment, y = SPAD_Value) +
   geom_boxplot(aes(fill = Treatment)) +
   theme_bw() +
@@ -597,7 +618,7 @@ I decided to generate box plots next to compare the interquartile range and medi
 
 ```{r}
 # Saving number of distinct values
-Total_SPAD = SPAD_Data_Clean |>
+Total_SPAD = SPAD_Data_no_multiple |>
   distinct(ID_num) |>
   summarise(
     n = n()
@@ -606,7 +627,7 @@ Total_SPAD = SPAD_Data_Clean |>
 Total_SPAD = Total_SPAD$n
 
 # Generating summary statistics for SPAD values from living plants with summarise()
-SPAD_summary = SPAD_Data_Alive |>
+SPAD_summary = SPAD_Data_no_multiple |>
   group_by(Treatment) |>
   summarise(
     mean_SPAD = mean(SPAD_Value, na.rm = TRUE),
@@ -650,8 +671,8 @@ I decided to pivot to a column plot to compare averages between treatments since
 Moist_summary = Moist_Data_Clean |>
   group_by(VWC_or_PER, Treatment) |>
   summarise(
-    mean = mean(as.double(value)),
-    sd = sd(as.double(value)),
+    mean = mean(value, na.rm = TRUE),
+    sd = sd(value, na.rm = TRUE),
     n = n(),
     se = sd/sqrt(n)
   )
@@ -834,7 +855,7 @@ Moist_condensed = Moist_Data_Clean |>
   distinct(VWC, .keep_all = TRUE) |>
   
   # Removing Block 4 Natural Recruits due to them having no data
-  filter(is.na(VWC) == FALSE) |>
+  filter(is.na(VWC) == FALSE)
 
 # Visual verification
 Moist_condensed
@@ -857,7 +878,12 @@ SPAD_condensed = SPAD_Data_Alive |>
 SPAD_condensed
 
 # Combining tibbles with merge() to blend identical columns
-Moist_SPAD_combined = merge(SPAD_condensed, Moist_condensed)
+Moist_SPAD_combined = left_join(Moist_condensed, SPAD_condensed,
+  join_by(Block, Treatment)
+  ) |>
+  
+  # Removing NA values
+  filter(is.na(SPAD_Value) == FALSE)
 
 # Visual verification
 Moist_SPAD_combined
@@ -894,7 +920,7 @@ Moist_SPAD_combined |> ggplot() +
 
 # Repeating initial plot with log transformation to normalize data more
 Moist_SPAD_combined |> ggplot() +
-  aes(x = VWC, y = log(SPAD_Value)) +
+  aes(x = log(VWC), y = log(SPAD_Value)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
   theme_bw() +

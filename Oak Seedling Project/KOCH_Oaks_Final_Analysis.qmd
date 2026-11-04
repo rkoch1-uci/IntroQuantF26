@@ -1,0 +1,603 @@
+---
+title: "Oaks Final Analysis"
+author: "Ryan Koch"
+datemodified: 11/3/2026
+format: docx
+editor: visual
+---
+
+# Project Summary
+
+# Set-Up Chunks
+
+## Loading packages
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+## Loading data sets
+
+```{r}
+# Saving Excel data to variables with read_excel
+Height_Data_Raw = read_excel(
+  "Oak Data Entry MCRS Field Trip.xlsx", 
+  sheet = "Seedling Heights"
+  )
+
+Moist_Data_Raw = read_excel(
+  "Oak Data Entry MCRS Field Trip.xlsx", 
+  sheet = "Soil Moisture"
+  )
+
+SPAD_Data_Raw = read_excel(
+  "Oak Data Entry MCRS Field Trip.xlsx", 
+   sheet = "SPAD", na = "NA")
+```
+
+# 1. Cleaning Data with dplyr
+
+## 1.1. Cleaning SPAD Data
+
+```{r}
+# Visual check to see if data looks as expected
+SPAD_Data_Raw
+
+# Cleaning SPAD data
+SPAD_Data_Clean = SPAD_Data_Raw |>
+  
+  # Filtering out NA rows (there's a billion for some reason) with filter()
+  filter(is.na(Treatment) == FALSE) |>
+  
+  # Creating new column for sapling number with separate()
+  separate(Tag_Num,
+           c("Tag_Num", "Sapling_Num"), 
+           3, extra = "merge", fill = "right"
+  ) |>
+  
+  # Converting Sapling_Num into characters and adding NA values where applicable
+  # with mutate() and case_when()
+  mutate(Sapling_Num = case_when(
+    Sapling_Num == "A1" ~ "A",
+    Sapling_Num == "A2" ~ "B",
+    Sapling_Num == "A3" ~ "C",
+    is.na(Sapling_Num) == TRUE ~ NA
+    )
+  )
+
+# Visual verification
+SPAD_Data_Clean
+
+# Removing QAQC columns to the right of Notes by identifying its column number with which() and then selecting only the columns to the left
+Notes_colnum_SPAD = which(colnames(SPAD_Data_Clean) == "Notes")
+SPAD_Data_Clean = SPAD_Data_Clean[1:16]
+
+# Visual verification
+SPAD_Data_Clean
+
+# Creating column of unique identifier numbers with mutate()
+SPAD_Data_Clean = SPAD_Data_Clean |>
+  mutate(ID_num = row_number())
+
+# Visual verification
+SPAD_Data_Clean
+
+# Converting Leaf columns into Leaf_Num column with pivot_longer()
+SPAD_Data_Clean = SPAD_Data_Clean |>
+  pivot_longer(names_to = "Leaf_Num", values_to = "SPAD_Value", cols = 9:14) |>
+  
+  # Removing "Leaf" from Leaf_Num with separate()
+  separate(Leaf_Num,
+    c("Leaf", "Leaf_Num"), 
+    4, extra = "merge", fill = "right"
+  ) |>
+  
+  # Removing Notes and Leaf with select()
+  select(-Leaf, -Notes)
+
+# Visual verification
+SPAD_Data_Clean
+
+# Blanket fix for each data type that's wrong with mutate()
+SPAD_Data_Clean = SPAD_Data_Clean |>
+  mutate(Tag_Num = as.integer(Tag_Num)) |>
+  mutate(Num_leaves = as.integer(Num_leaves)) |>
+  mutate(Leaf_Num = as.integer(Leaf_Num))
+
+# Separating dead plants into a new variable with filter()
+SPAD_Data_Dead = SPAD_Data_Clean |>
+  filter(Num_leaves == 0)
+
+# Visual verification
+SPAD_Data_Dead
+
+# Using filter() again to store live plant data in a variable
+SPAD_Data_Alive = SPAD_Data_Clean |>
+  filter(Num_leaves != 0)
+
+# Visual verification
+SPAD_Data_Alive
+```
+
+## 1.2. Cleaning Soil Moisture Data
+
+```{r}
+# Visual check to see if data looks as expected
+Moist_Data_Raw
+
+# Cleaning soil moisture data
+Moist_Data_Clean <- Moist_Data_Raw |> 
+  
+  # Removing excess NA rows with filter()
+  filter(is.na(Treatment) == FALSE) |>
+  
+  # Changing "NA" to actual native NA value with mutate() and case_when()
+  mutate(VWC1_perc = case_when(
+    VWC1_perc == "NA" ~ NA,
+    VWC1_perc != "NA" ~ VWC1_perc
+  )
+  ) |>
+  mutate(PER1_ms = case_when(
+    PER1_ms == "NA" ~ NA,
+    PER1_ms != "NA" ~ PER1_ms
+  )
+  ) |>
+  mutate(VWC2_perc = case_when(
+    VWC2_perc == "NA" ~ NA,
+    VWC2_perc != "NA" ~ VWC2_perc
+  )
+  ) |>
+  mutate(PER2_ms = case_when(
+    PER2_ms == "NA" ~ NA,
+    PER2_ms != "NA" ~ PER2_ms
+  )
+  ) |>
+  mutate(VWC3_perc = case_when(
+    VWC3_perc == "NA" ~ NA,
+    VWC3_perc != "NA" ~ VWC3_perc
+  )
+  ) |>
+  mutate(PER3_ms = case_when(
+    PER3_ms == "NA" ~ NA,
+    PER3_ms != "NA" ~ PER3_ms
+  )
+  )
+
+# Visual verification
+Moist_Data_Clean
+
+# Removing QAQC columns to the right of Notes by identifying its column number with which() and then selecting only the columns to the left
+Notes_colnum_Moist = which(colnames(Moist_Data_Clean) == "Notes")
+Moist_Data_Clean = Moist_Data_Clean[1:12]
+
+# Visual verification
+Moist_Data_Clean
+
+# Creating column of unique identifier numbers with mutate()
+Moist_Data_Clean = Moist_Data_Clean |>
+  mutate(ID_num = row_number())
+
+# Visual verification
+Moist_Data_Clean
+
+# Converting VWC/PER columns into VWC_or_PER and value columns with pivot_longer()
+Moist_Data_Clean = Moist_Data_Clean |>
+  pivot_longer(names_to = "VWC_or_PER", values_to = "value", cols = 6:11) |>
+  
+  # Removing tail end of name from VWC_or_PER with separate()
+  separate(VWC_or_PER,
+           c("VWC_or_PER", "type"), 
+           "_"
+  ) |>
+  
+  # Separating VWC_or_PER again with separate() to create a new measure_num column
+  separate(VWC_or_PER,
+           c("VWC_or_PER", "measure_num"),
+           3, extra = "merge", fill = "right"
+  ) |>
+  
+  # Removing type and Notes columns with select()
+  select(-type, -Notes, -ID_num)
+
+# Visual verification
+Moist_Data_Clean
+
+# Blanket fixing data types with mutate()
+Moist_Data_Clean = Moist_Data_Clean |>
+  mutate(measure_num = as.integer(measure_num)) |>
+  mutate(value = as.double(value))
+
+# Visual verification
+Moist_Data_Clean
+```
+
+## 1.3. Cleaning Height Data
+
+```{r}
+# Visual check to see if data looks as expected
+Height_Data_Raw
+  
+# Cleaning Height_Data
+Height_Data_Clean = Height_Data_Raw |>
+  
+  # Remove NA rows
+  filter(is.na(Treatment) == FALSE) |>
+  
+  # Changing alphanumeric Sapling_AB_etc values to characters
+  mutate(Sapling_AB_etc = case_when(
+    Sapling_AB_etc == "A1" ~ "A",
+    Sapling_AB_etc == "A2" ~ "B",
+    Sapling_AB_etc == "A3" ~ "C",
+    is.na(Sapling_AB_etc) == TRUE ~ NA
+    )
+  ) |>
+  
+  # Removing that one random NA value in Dead_Alive
+  filter(is.na(Dead_Alive) == FALSE) |>
+  
+  # Removing any treatment IDs that are incorrect
+  filter(Treatment %in% c("AC", "DT", "NR", "OS"))
+
+# Visual verification
+Height_Data_Clean
+
+# Removing QAQC data
+Notes_colnum_Height = which(colnames(Height_Data_Clean) == "Notes")
+Height_Data_Clean = Height_Data_Clean[1:10]
+
+# Visual verification
+Height_Data_Clean
+
+# Blanket fixing data types with mutate()
+Height_Data_Clean = Height_Data_Clean |>
+  mutate(Tag_Num = as.integer(Tag_Num))
+
+# Visual verification
+Height_Data_Clean
+```
+
+# 2. Statistical Analysis
+
+## 2.1. Regression Testing with SPAD_Value \~ VWC
+
+### 2.1.1. Combining SPAD and Soil Moisture Data
+
+```{r}
+# Cleaning up soil moisture data more to prep it for combination
+Moist_condensed = Moist_Data_Clean |>
+  
+  # Removing PER measurements with filter()
+  filter(VWC_or_PER == "VWC") |>
+  
+  # Condensing VWC measurements to an average of the three measurements with
+  # summarise()
+  group_by(Treatment, Block) |>
+  mutate(
+    VWC = mean(as.double(value), na.rm = TRUE)
+  ) |>
+  
+  # Removing excess columns with select()
+  select(-VWC_or_PER, -measure_num, -value) |>
+  
+  # Removing duplicate rows with distinct()
+  distinct(VWC, .keep_all = TRUE) |>
+  
+  # Removing Block 4 Natural Recruits due to them having no data
+  filter(is.na(VWC) == FALSE)
+
+# Visual verification
+Moist_condensed
+
+# Cleaning up SPAD data more to prep it for combination, defaulting to Alive
+# data set since dead plants have no SPAD value
+SPAD_condensed = SPAD_Data_Alive |>
+  
+  # Removing Leaf_Num with select() so it doesn't complicate our math
+  select(-Leaf_Num) |>
+  
+  # Creating mean SPAD measurement for each plant with mutate()
+  group_by(Treatment, Block) |>
+  mutate(SPAD_Value = mean(SPAD_Value, na.rm = TRUE)) |>
+  
+  # Removing duplicate rows with distinct()
+  distinct(SPAD_Value, .keep_all = TRUE)
+
+# Visual verification
+SPAD_condensed
+
+# Combining tibbles with merge() to blend identical columns
+Moist_SPAD_combined = left_join(Moist_condensed, SPAD_condensed,
+  join_by(Block, Treatment)
+  ) |>
+  
+  # Removing NA values
+  filter(is.na(SPAD_Value) == FALSE)
+
+# Visual verification
+Moist_SPAD_combined
+```
+
+### 2.1.2. Initial Visualization of SPAD_Value \~ VWC
+
+```{r}
+# Generating scatter plot with a best-fit line using ggplot() + geom_point() + geom_smooth()
+Moist_SPAD_combined |> ggplot() +
+  aes(x = VWC, y = SPAD_Value) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_bw() +
+  labs(
+    x = "Mean volumetric water content (as a percentage)",
+    y = "Mean SPAD value",
+  )
+```
+
+Scatter plot of mean SPAD value compared to mean volumetric water content across all treatment types. A line-of-best-fit is fitted to the data and highlighted in blue. Initial visualizations suggest a weak negative relationship between the two measurements at a glance, meaning SPAD value/greenness decreases as volumetric water content in the soil increases. This could be the result of natural variation in our data, however.
+
+### 2.1.3. Checking Prerequisites for a Linear Regression
+
+```{r}
+# Generating linear model of our data with lm()
+SPAD_VWC_Model = lm(SPAD_Value ~ VWC, Moist_SPAD_combined)
+
+# Visualizing plot of residuals vs. fitted for our model with plot()
+plot(SPAD_VWC_Model, which = 1)
+
+# Visualizing QQ plot for our model using model()
+plot(SPAD_VWC_Model, which = 2)
+```
+
+Our data currently fails tests for homoscedasticity and normality by the results of our residuals vs. fitted plot and QQ plot, respectively. The latter issue appears to be solvable by removing a major outlier in our data, so we'll remove that point then redo our tests.
+
+```{r}
+# Removing outlier data from our combined data set with filter()
+Moist_SPAD_combined = Moist_SPAD_combined |>
+  filter(SPAD_Value <= 40.0)
+
+# Visual verification
+Moist_SPAD_combined
+
+# Generating linear model of our data with lm()
+SPAD_VWC_Model = lm(SPAD_Value ~ VWC, Moist_SPAD_combined)
+
+# Visualizing plot of residuals vs. fitted for our model with plot()
+plot(SPAD_VWC_Model, which = 1)
+
+# Visualizing QQ plot for our model using model()
+plot(SPAD_VWC_Model, which = 2)
+```
+
+Removing the outlier point has made our QQ plot confirm normality and flattened the plot of residuals vs. fitted enough that we can say there is homoscedasticity in our data. As such, we'll go ahead with a Pearson's Product Moment Correlation.
+
+### 2.1.4 Conducting Regression Test
+
+```{r}
+# Saving test output to a variable
+SPAD_VWC_regression = Moist_SPAD_combined |>
+  cor.test(SPAD_Value, VWC, method = "pearson")
+```
+
+What the FUCK man
+
+# CHECK WITH AMY WHY MY CHUD SON ISN'T OUTPUTTING A REGRESSION
+
+### 2.1.5. Visualizing Regression Results
+
+```{r}
+# Generating scatter plot with a best-fit line using ggplot() + geom_point() + geom_smooth()
+Moist_SPAD_combined |> ggplot() +
+  aes(x = VWC, y = SPAD_Value) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_text(label = c("My regression failed :("),
+    x = 5.5, y = 30) +
+  theme_bw() +
+  labs(
+    x = "Mean volumetric water content (as a percentage)",
+    y = "Mean SPAD value",
+  )
+```
+
+explanation
+
+## 2.2. ANOVA Testing on Leaf Count
+
+### 2.2.1. Cleaning SPAD Data to Remove Extra Saplings in Each Plot
+
+```{r}
+# Filtering out data with multiple saplings with filter()
+SPAD_Data_multiple = SPAD_Data_Alive |>
+  group_by(Tag_Num) |>
+  filter(is.na(Sapling_Num) == FALSE) |>
+  
+  # Selecting only the sapling with the most leaves from each tag with slice_max()
+  slice_max(Num_leaves) |>
+  
+  # Removing duplicate stragglers with distinct()
+  distinct(Tag_Num, .keep_all = TRUE)
+
+# Visual verification
+SPAD_Data_multiple
+
+# Generating intermediate tibble without multiple saplings using filter()
+SPAD_Data_temp = SPAD_Data_Alive |>
+  filter(is.na(Sapling_Num) == TRUE)
+
+# Visual verification
+SPAD_Data_temp
+
+# Reconstructing main tibble by reattaching SPAD_Data_multiple to SPAD_Data_temp with bind_rows()
+SPAD_Data_no_multiple = bind_rows(SPAD_Data_temp, SPAD_Data_multiple)
+
+# Visual verification
+SPAD_Data_no_multiple
+```
+
+I defaulted to SPAD_Data_Alive because dead leaves don't have SPAD values.
+
+### 2.2.2. Checking Prerequisites for an ANOVA
+
+```{r}
+# Generating box plot with ggplot() + geom_boxplot() for Alive data
+SPAD_Data_no_multiple |> ggplot() +
+  aes(x = Treatment, y = Num_leaves) +
+  geom_boxplot(aes(fill = Treatment), color = "black") +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(x = "Treatment",
+       y = "Number of leaves",
+       title = "Number of leaves across all living plants per treatment"
+  )
+```
+
+Open sky has a colossal outlier that has to go before we can continue. It is also worth noting that our box plots are not symmetrical about the median, meaning our data is skewed and may need a transformation. We'll do this by taking the natural log.
+
+```{r}
+# Visualizing OS data only with filter() to identify outlier
+SPAD_Data_no_multiple |>
+  filter(Treatment == "OS")
+
+# Removing outlier data point with filter()
+SPAD_Data_no_outlier = SPAD_Data_no_multiple |>
+  filter(Num_leaves < 100.0)
+
+# Visual verification by creating box plot with ggplot() + geom_boxplot()
+SPAD_Data_no_outlier |> ggplot() +
+  aes(x = Treatment, y = Num_leaves) +
+  geom_boxplot(aes(fill = Treatment), color = "black") +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(x = "Treatment",
+       y = "Number of leaves",
+       title = "Number of leaves across all living plants per treatment"
+  )
+
+# Repeating plot with log transformation in aes() argument
+SPAD_Data_no_outlier |> ggplot() +
+  aes(x = Treatment, y = log(Num_leaves)) +
+  geom_boxplot(aes(fill = Treatment), color = "black") +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(x = "Treatment",
+       y = "Log number of leaves",
+       title = "Log number of leaves across all living plants per treatment"
+  )
+```
+
+This looks better but our OS data are still very skewed despite the other three treatments now appearing symmetrical about the mean. We need to try another transformation, this time removing duplicate values of Num_leaves to thin out our data since this is the most likely candidate.
+
+```{r}
+# Thinning data with distinct() to remove duplicate data points that may be resulting in skew
+SPAD_Data_no_outlier = SPAD_Data_no_outlier |>
+  group_by(ID_num) |>
+  distinct(Num_leaves, .keep_all = TRUE)
+
+# Visualizing log-transformed box plot again with ggplot() + geom_boxplot()
+SPAD_Data_no_outlier |> ggplot() +
+  aes(x = Treatment, y = log(Num_leaves)) +
+  geom_boxplot(aes(fill = Treatment), color = "black") +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(x = "Treatment",
+       y = "Log number of leaves",
+       title = "Log number of leaves across all living plants per treatment"
+  )
+```
+
+Thinning our data like this appears to have normalized things, so I'll conduct the ANOVA prerequisite tests now. A Bartlett test could not be used since all test have to account for both Treatment and Block, meaning we have to evaluate homogeneity of variance graphically, and we should consider our Shapiro-Wilk test results since our thinned data's sample size is small (n = 67).
+
+```{r}
+# Creating linear model for SPAD_Data_no_outlier with lm()
+Leaf_model = lm(log(Num_leaves) ~ Treatment * Block, data = SPAD_Data_no_outlier)
+
+# Checking QQ plot with plot() to evaluate normality
+plot(Leaf_model, which = 2)
+
+# Checking plot of residuals vs. fitted with plot() to check for homogeneity of variance
+plot(Leaf_model, which = 1)
+
+# Conducting Shapiro-Wilk test using shapiro.test() on model residuals
+shapiro.test(Leaf_model$residuals)
+```
+
+Now, with our data cleaned, our QQ plot shows normality, our plot of residuals vs. fitted shows homoogeneity of variance, and our Shapiro-WIlk test further confirms normality (p \> 0.05). We can thus continue with a standard two-way ANOVA test.
+
+### 2.2.3 Conducting Two-Way ANOVA test
+
+```{r}
+# Conducting two-way ANOVA on Leaf_model using aov()
+Leaf_model_aov = aov(Num_leaves ~ Treatment * Block, data = SPAD_Data_no_outlier)
+
+# Visual verification
+Leaf_model_aov
+```
+
+Our degrees of freedom for our predictors and our residuals both make sense (# treatments - 1 = 3, 4 total treatments; \# blocks - 1 = 7, 8 total blocks; Residuals = 67 - (4 \* 7) = 39). We can thus comfortably apply a Tukey post-hoc test to the results.
+
+# CHECK RESIDUAL D.O.F. WITH AMY
+
+```{r}
+# Conducting Tukey post-hoc test on results with TukeyHSD()
+TukeyHSD(Leaf_model_aov)
+```
+
+results
+
+### 2.1.4 Visualizing Results
+
+```{r}
+# Generating leaf count summary statistics with summarise()
+Leaf_summary = SPAD_Data_no_outlier |>
+  group_by(Treatment) |>
+  summarise(
+    mean_leaf = mean(Num_leaves),
+    sd_leaf = sd(Num_leaves),
+    n = n(),
+    se_leaf = sd_leaf/sqrt(n)
+  )
+
+# Visual verification
+Leaf_summary
+
+# Visualizing ANOVA results with a column plot using ggplot() + geom_col()
+Leaf_summary |> ggplot() +
+  aes(x = Treatment, y = mean_leaf, fill = Treatment) +
+  geom_col(color = "black") +
+  geom_errorbar(aes(
+    ymin = mean_leaf - se_leaf,
+    ymax = mean_leaf + se_leaf
+    ),
+    position = position_dodge(0.9), width = 0.2
+  ) +
+  geom_text(
+    label = c("A", "B", "C", "D"),
+    vjust = -0.5, hjust = 3, position = "nudge"
+  ) +
+  labs(
+    y = "Leaf count"
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+
+```
