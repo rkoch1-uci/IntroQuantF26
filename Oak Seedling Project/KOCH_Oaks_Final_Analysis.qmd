@@ -587,8 +587,8 @@ Leaf_summary |> ggplot() +
     position = position_dodge(0.9), width = 0.2
   ) +
   geom_text(
-    label = c("A", "B", "C", "D"),
-    vjust = -0.5, hjust = 3, position = "nudge"
+    label = c("ABD", "ABD", "C", "ABD"),
+    vjust = -0.5, hjust = 1.75, position = "nudge"
   ) +
   labs(
     y = "Leaf count"
@@ -599,5 +599,6 @@ Leaf_summary |> ggplot() +
     panel.grid.major = element_blank(),
     panel.grid.minor = element_blank()
   )
-
 ```
+
+A column plot showing the mean leaf count of each treatment, with two-way ANOVA results denoted in text at the top of each column. Standard error is depicted via error bars also located at the top of each column. Results show no significant differences in mean leaf count between any of the treatments; only the natural recruits were found to have significantly heigher mean leaf count. It is possible that
