@@ -13,11 +13,6 @@ Ignoring either variable might hide the relationship.
 In our owl limpet model, we know that territory size scales with body mass, but is that relationship the same at all our sites?
 
 ```{r}
-install.packages("cAIC4")
-install.packages("kableEXtra")
-install.packages("lmerTest")
-install.packages("sjPlot")
-
 library(tidyverse)
 library(lme4)
 library(lmerTest)
