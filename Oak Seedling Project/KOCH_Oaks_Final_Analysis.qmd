@@ -313,6 +313,8 @@ Height_Data_Clean
 
 We want to establish that the storm that occurred did not modify any relationships in our measurements. As such, we will conduct regressions for SPAD value, seedling height, and leaf count with volumetric water content as the predictor for before and after the storm.
 
+## 2.1. Evaluating VWC by Day
+
 ## 2.1. Regression Testing with SPAD_Value \~ VWC
 
 #### Combining SPAD and Soil Moisture Data
@@ -832,9 +834,44 @@ Leaf_Moist_Day1_Model = lmer(
 Leaf_Moist_Day2_Model = lmer(
   Num_leaves ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
   data = Leaf_Moist_Day2)
+
+# Viewing plot of residuals vs. fitted for our models with plot()
+plot(Leaf_Moist_Day1_Model)
+plot(Leaf_Moist_Day2_Model)
 ```
 
+Unsurprisingly, our residuals show unequal variance. We will need to weigh our models for variance to account for this.
+
 # Same weighting issue as others
+
+```{r}
+Leaf_Day1_variance = varPower(Leaf_Moist_Day1$Num_leaves,
+  ~Leaf_Moist_Day2$VWC)
+Leaf_Day2_variance = varPower(Leaf_Moist_Day2$Num_leaves,
+  ~Leaf_Moist_Day2$VWC)
+
+Leaf_Moist_Day1_Model = lmer(
+  Num_leaves ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
+  data = SPAD_Moist_Day1, weights = varWeights(Leaf_Day1_variance))
+
+Leaf_Moist_Day2_Model = lmer(
+  Num_leaves ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
+  data = Leaf_Moist_Day2, weights = varWeights(Leaf_Day2_variance))
+
+hist(Leaf_Moist_Day1$Num_leaves)
+hist(Leaf_Moist_Day2$Num_leaves)
+```
+
+Our models are still heavily skewed but we'll assume normality due to low sample size. Thus, we'll continue with a simple mixed-effects regression test.
+
+#### Conducting Simple Regression Test
+
+```{r}
+summary(Leaf_Moist_Day1_Model)
+summary(Leaf_Moist_Day2_Model)
+```
+
+p = 0.622, p - 0.0507
 
 ## 2.4. Evaluating SPAD Value by Treatment
 
@@ -919,7 +956,7 @@ anova(SPAD_Model)
 emmeans(SPAD_Model, pairwise ~ Treatment, adjust = "Tukey")
 ```
 
-Our ANOVA table shows significant differences found amongst treatments, identified as AC - NR (p = 0.0010) and AC - OS (0.0019) after a Tukey post-hoc test.
+Our ANOVA table shows significant differences found amongst treatments (p = 2.299e-05), identified as AC - NR (p = 0.0010) and AC - OS (0.0019) after a Tukey post-hoc test.
 
 #### Visualizing ANOVA Results
 
@@ -1040,19 +1077,23 @@ There is no reason to remove outliers, so we will have to weight our lmer model 
 
 # ASK ABOUT THIS DURING OFFICE HOURS
 
-I need to weight this model for variance. It has a *weights* argument that needs a vector of values and I know the formula for weighting by variance is 1/Variance, I just can't calculate it because I don't know how.
+I need to weight this model for variance. It has a *weights* argument that needs a vector of values and I know the formula for weighting by variance is 1/Variance. I'm using varWeights with a varClasses function as an argument, selecting the specific function to fit the shape of the residuals, but want to know if I'm approaching this correctly.
 
 ```{r}
-# Generating mixed effects model for seedling height data with lmer(), using Block, Date, and Multiple_Seedling as random effects
+# Creating varClasses function fit to the shape of the Residuals plot, in this case varExp
+Height_variance = varExp(Height_Data_Alive$Seedling_Ht_cm,
+  ~Height_Data_Alive$Treatment)
+
+# Generating mixed effects model for seedling height data with lmer(), using Block, Date, and Multiple_Seedling as random effects. Weights set using varWeights() on our varClasses model
 Height_Model = lmer(
   Seedling_Ht_cm ~ Treatment + (1|Block) + (1|Date) + (1|Multiple_Seedling),
-  data = Height_Data_Alive)
+  data = Height_Data_Alive, weights = varWeights(Height_variance))
 
-# Checking plot of residuals vs. fitted for our model with plot()
-plot(Height_Model)
+# Checking histogram of Seedling_Ht_cm with hist() to check for normality
+hist(Height_Data_Alive$Seedling_Ht_cm)
 ```
 
-results
+Our data has a tail but appears mostly normal. We will proceed with a multiple-effects ANOVA.
 
 #### Conducting ANOVA Test
 
@@ -1064,7 +1105,7 @@ anova(Height_Model)
 emmeans(Height_Model, pairwise ~ Treatment, adjust = "Tukey")
 ```
 
-results
+Our ANOVA table shows significant differences found amongst treatments (p = 1.329e-07), identified as AC - NR (p = 0.0016), AC - OS (p = 0.0229), DT - NR (p = 0.0044), and DT-OS (p = 0.0246) after a Tukey post-hoc test.
 
 #### Visualizing ANOVA Results
 
@@ -1108,7 +1149,7 @@ Height_Data_Alive |>
   )
 ```
 
-results
+Column plot of average seedling height between treatments, with standard error bars depicted at the top of each column. Results from a one-way multiple-effects ANOVA are denoted at the top of each column as well. The Adult Canopy/Dead Tree treatments were found to be significantly different from the Natural Recruit/Open Sky treatments, with the two pairs each being statistically indistinct from one another. It is possible that the Natural Recruit and Open Sky treatments had more space to grow by virtue of the former representing seedlings naturally selected for ideal conditions for growth and the latter being planted in open terrain.
 
 ## 2.6. Evaluating Leaf Count by Treatment
 
@@ -1181,7 +1222,12 @@ While this has reduced noise in our data, this still has unequal variance. We wi
 # Same issue as previous ANOVA
 
 ```{r}
-# This is the chunk where you weight your model (if you could)
+Leaf_ANOVA_variance = varExp(Leaf_Model_Data$Num_leaves, ~Leaf_Model_Data$Treatment)
+
+# Generating mixed effects model for leaf count data with lmer(), using Block, Date, and Multiple_Seedling as random effects. Weighted for variance with varWeights()
+Leaf_Model = lmer(
+  Num_leaves ~ Treatment + (1|Block) + (1|Date) + (1|Multiple_Seedling),
+  data = Leaf_Model_Data, weights = varWeights(Leaf_ANOVA_variance))
 ```
 
 results
