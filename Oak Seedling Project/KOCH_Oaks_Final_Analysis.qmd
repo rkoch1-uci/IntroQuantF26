@@ -315,7 +315,155 @@ We want to establish that the storm that occurred did not modify any relationshi
 
 ## 2.1. Evaluating VWC by Day
 
-## 2.1. Regression Testing with SPAD_Value \~ VWC
+#### Initial Visualization of VWC by Day
+
+```{r}
+# Visualizing mean VWC by Day
+Moist_Data_Clean |> 
+  
+  # Grouping days into before and after the storm with mutate() and case_when()
+  mutate(Day = case_when(
+    Date == "2026-10-08" ~ 1,
+    Date != "2026-10-08" ~ 2
+    )
+  ) |>
+  
+  # Selecting VWC measurements only with filter()
+  filter(VWC_or_PER == "VWC") |>
+  
+  # Generating summary statistics with summarise()
+  group_by(Day) |>
+  summarise(
+    mean_VWC = mean(value),
+    sd_VWC = sd(value),
+    n = n(),
+    se_VWC = sd_VWC/sqrt(n)
+  ) |>
+  
+  # Generating column plot with errorbars using ggplot() + geom_col() +
+  # geom_errorbar()
+  ggplot() +
+  aes(x = Day, y = mean_VWC, fill = Day) +
+  geom_col(color = "black") +
+  geom_errorbar(aes(
+    ymin = mean_VWC - se_VWC,
+    ymax = mean_VWC + se_VWC
+    ),
+    position = position_dodge(0.9), width = 0.2
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    x = "Day",
+    y = "Volumetric water count (as a percentage)"
+  )
+```
+
+Column plot of mean VWC on each sampling day, before and after the storm. Standard error bars are visualized at the top of each column. There appears to be a very large difference between the soil volumetric water content between the two days, consistent with the expected impact from the storm.
+
+#### Checking Prerequisites for ANOVA Testing
+
+```{r}
+# Creating copies of Moist_Data_Clean for each day
+Moist_Day_ANOVA = Moist_Data_Clean |>
+    
+  # Grouping days into before and after the storm with mutate() and
+  # case_when() 
+  mutate(Day = case_when(
+    Date == "2026-10-08" ~ 1,
+    Date != "2026-10-08" ~ 2
+    ),
+    .before = Team
+  ) |>
+  
+  # Removing Date column with select()
+  select(-Date) |>
+  
+  # Selecting VWC measurements only with filter()
+  filter(VWC_or_PER == "VWC")
+
+# Creating mixed effect models for VWC ~ Day with lmer(), with Treatment and Block as random effects
+Moist_Day_Model = lmer(value ~ Day + (1|Treatment) + (1|Block),
+  data = Moist_Day_ANOVA)
+
+# Checking plot of residuals vs. fitted for our models with plot()
+plot(Moist_Day_Model)
+```
+
+Our model needs to be weighted to account for heterogeneity of variance.
+
+```{r}
+# Creating a mixed-effects model for VWC ~ Day with lmer(), with Treatment and Block as random effects abd weighting for variance added by applying varWeights to a varClasses function fitting our residuals
+Moist_Day_Model = lmer(value ~ Day + (1|Treatment) + (1|Block),
+  data = Moist_Data_Day1, weights = varWeights(
+    varConstPower(form = ~Treatment)
+    )
+  )
+
+# Checking for normality in VWC with hist()
+hist(Moist_Day_ANOVA$value)
+```
+
+Y'all this is so fucked
+
+# Fix this. at some point
+
+#### Conducting ANOVA Test
+
+```{r}
+# Visualizing summary of our models with summary()
+summary(Moist_Day_Model)
+```
+
+Results of a multiple-effects ANOVA with the form VWC \~ Day return a p-value of 0.0157, suggesting that there is a difference in soil volumetric water content before and after the storm.
+
+#### Visualizing ANOVA Results
+
+```{r}
+# Generating visual of mean VWC by Day, with error bars and ANOVA results included
+Moist_Day_ANOVA |>
+  
+  # Generating summary statistics with summarise()
+  group_by(Day) |>
+  summarise(
+    mean_VWC = mean(value),
+    sd_VWC = sd(value),
+    n = n(),
+    se_VWC = sd_VWC/sqrt(n)
+  ) |>
+  
+  # Generating column plot with errorbars using ggplot() + geom_col() +
+  # geom_errorbar()
+  ggplot() +
+  aes(x = Day, y = mean_VWC, fill = Day) +
+  geom_col(color = "black") +
+  geom_errorbar(aes(
+    ymin = mean_VWC - se_VWC,
+    ymax = mean_VWC + se_VWC
+  ),
+  position = position_dodge(0.9), width = 0.2
+  ) +
+  geom_text(label = c("A", "B"),
+    vjust = -0.5, hjust = 5.5, size = 3) +
+  theme_bw() +
+  theme(
+    legend.position = "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    x = "Day",
+    y = "Volumetric water count (as a percentage)"
+  )
+```
+
+results
+
+## 2.2. Regression Testing with SPAD_Value \~ VWC
 
 #### Combining SPAD and Soil Moisture Data
 
@@ -523,7 +671,7 @@ SPAD_Moist_combined |> ggplot() +
 
 Scatter plot of SPAD value as a function of volumetric water content across all treatment types, faceted by day. Results of a simple regression are displayed on each facet at the top left of each facet. There appears to be no relationship between SPAD value and volumetric water content both before and after the rainstorm occurred. This could be the result of SPAD value being determined by a combination of multiple factors, not just volumetric water content alone, but could equally be a function of soil water content being insufficient to support oak sapling development. Plant health could also be overall poor and yellowing the seedling's leaves.
 
-## 2.2. Regression Testing with Plant Height \~ VWC
+## 2.3. Regression Testing with Plant Height \~ VWC
 
 #### Combining Height and VWC data
 
@@ -714,7 +862,7 @@ Height_Moist_Day2 |> ggplot() +
 
 These results could suggest that seedling health is determined by multiple different factors, as was proposed in the discussion of regression tests on volumetric water content and leaf count, but again could just be the result of stochastic effects in the environment.
 
-## 2.3. Regression Testing with Leaf Count \~ VWC
+## 2.4. Regression Testing with Leaf Count \~ VWC
 
 #### Combining Leaf Count and Soil Moisture Data
 
@@ -842,25 +990,26 @@ plot(Leaf_Moist_Day2_Model)
 
 Unsurprisingly, our residuals show unequal variance. We will need to weigh our models for variance to account for this.
 
-# Same weighting issue as others
-
 ```{r}
-Leaf_Day1_variance = varPower(Leaf_Moist_Day1$Num_leaves,
-  ~Leaf_Moist_Day2$VWC)
-Leaf_Day2_variance = varPower(Leaf_Moist_Day2$Num_leaves,
-  ~Leaf_Moist_Day2$VWC)
-
 Leaf_Moist_Day1_Model = lmer(
   Num_leaves ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
-  data = SPAD_Moist_Day1, weights = varWeights(Leaf_Day1_variance))
+  data = SPAD_Moist_Day1, weights = varWeights(
+    varExp(form = ~Treatment)
+    )
+  )
 
 Leaf_Moist_Day2_Model = lmer(
   Num_leaves ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
-  data = Leaf_Moist_Day2, weights = varWeights(Leaf_Day2_variance))
+  data = Leaf_Moist_Day2, weights = varWeights(
+    varExp(form = ~Treatment)
+    )
+  )
 
 hist(Leaf_Moist_Day1$Num_leaves)
 hist(Leaf_Moist_Day2$Num_leaves)
 ```
+
+# Need to check Day 2, seems like varExp may not be correct
 
 Our models are still heavily skewed but we'll assume normality due to low sample size. Thus, we'll continue with a simple mixed-effects regression test.
 
@@ -873,7 +1022,43 @@ summary(Leaf_Moist_Day2_Model)
 
 p = 0.622, p - 0.0507
 
-## 2.4. Evaluating SPAD Value by Treatment
+#### Visualizing Regression Results
+
+```{r}
+# Creating scatter plot for Day 1 data using ggplot() + geom_point(), faceted using facet_wrap()
+Leaf_Moist_Day1 |> ggplot() +
+  aes(x = VWC, y = Num_leaves) +
+  geom_point(aes(color = Day)) +
+  facet_wrap(~Day, scales = "free_x") +
+  geom_text(
+    label = c("p = 0.622"),
+    x = 0.25, y = 32
+    ) +
+  theme_bw() +
+  labs(
+    x = "Volumetric water content (as a percentage)",
+    y = "Leaf count"
+  )
+
+# Creating scatter plot for Day 2 data using ggplot() + geom_point(), faceted using facet_wrap()
+Leaf_Moist_Day2 |> ggplot() +
+  aes(x = VWC, y = Num_leaves) +
+  geom_point(aes(color = Day)) +
+  facet_wrap(~Day, scales = "free_x") +
+  geom_text(
+    label = c("p = 0.0507"),
+    x = 6.5, y = 32
+  ) +
+  theme_bw() +
+  labs(
+    x = "Volumetric water content (as a percentage)",
+    y = "Leaf count"
+  )
+```
+
+results
+
+## 2.5. Evaluating SPAD Value by Treatment
 
 #### Initial Visualization of SPAD Value by Treatment
 
@@ -1002,7 +1187,7 @@ SPAD_Data_no_NA |>
 
 Column plot of average SPAD values between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted at the top of each column as well. The adult canopy treatment was found to differ from natural recruits and open sky treatments, specifically, while no differences were found between any of the other three treatments. Notably, the adult canopy and dead tree treatments were found to have a p-value of \~0.06 in their comparison, which is above the 0.05 threshold but close enough to still be noteworthy. It is possible that the adult canopy treatment has greener leaves due to the canopy overhead limiting the amount of light reaching the seedling, demanding a darker coloration to absorb more of the limited light reaching its leaves.
 
-## 2.5. Evaluating Seedling Height by Treatment
+## 2.6. Evaluating Seedling Height by Treatment
 
 #### Initial Visualization of Seedling Height by Treatment
 
@@ -1080,14 +1265,13 @@ There is no reason to remove outliers, so we will have to weight our lmer model 
 I need to weight this model for variance. It has a *weights* argument that needs a vector of values and I know the formula for weighting by variance is 1/Variance. I'm using varWeights with a varClasses function as an argument, selecting the specific function to fit the shape of the residuals, but want to know if I'm approaching this correctly.
 
 ```{r}
-# Creating varClasses function fit to the shape of the Residuals plot, in this case varExp
-Height_variance = varExp(Height_Data_Alive$Seedling_Ht_cm,
-  ~Height_Data_Alive$Treatment)
-
-# Generating mixed effects model for seedling height data with lmer(), using Block, Date, and Multiple_Seedling as random effects. Weights set using varWeights() on our varClasses model
+# Generating mixed effects model for seedling height data with lmer(), using Block, Date, and Multiple_Seedling as random effects. Weights set using varWeights() applied to a varClasses function fitting the shape of our residuals
 Height_Model = lmer(
   Seedling_Ht_cm ~ Treatment + (1|Block) + (1|Date) + (1|Multiple_Seedling),
-  data = Height_Data_Alive, weights = varWeights(Height_variance))
+  data = Height_Data_Alive, weights = varWeights(
+    varExp(form = ~Treatment)
+    )
+  )
 
 # Checking histogram of Seedling_Ht_cm with hist() to check for normality
 hist(Height_Data_Alive$Seedling_Ht_cm)
@@ -1151,7 +1335,7 @@ Height_Data_Alive |>
 
 Column plot of average seedling height between treatments, with standard error bars depicted at the top of each column. Results from a one-way multiple-effects ANOVA are denoted at the top of each column as well. The Adult Canopy/Dead Tree treatments were found to be significantly different from the Natural Recruit/Open Sky treatments, with the two pairs each being statistically indistinct from one another. It is possible that the Natural Recruit and Open Sky treatments had more space to grow by virtue of the former representing seedlings naturally selected for ideal conditions for growth and the latter being planted in open terrain.
 
-## 2.6. Evaluating Leaf Count by Treatment
+## 2.7. Evaluating Leaf Count by Treatment
 
 #### Initial Visualization of Leaf Count by Treatment
 
@@ -1222,12 +1406,15 @@ While this has reduced noise in our data, this still has unequal variance. We wi
 # Same issue as previous ANOVA
 
 ```{r}
-Leaf_ANOVA_variance = varExp(Leaf_Model_Data$Num_leaves, ~Leaf_Model_Data$Treatment)
-
-# Generating mixed effects model for leaf count data with lmer(), using Block, Date, and Multiple_Seedling as random effects. Weighted for variance with varWeights()
+# Generating mixed effects model for leaf count data with lmer(), using Block, Date, and Multiple_Seedling as random effects. Weighted for variance with varWeights() applied to a varClasses() function fitting our residuals
 Leaf_Model = lmer(
   Num_leaves ~ Treatment + (1|Block) + (1|Date) + (1|Multiple_Seedling),
-  data = Leaf_Model_Data, weights = varWeights(Leaf_ANOVA_variance))
+  data = Leaf_Model_Data, weights = varWeights(
+    varExp(form = ~Treatment)
+    )
+  )
+
+hist(Leaf_Model_Data$Num_leaves)
 ```
 
 results
