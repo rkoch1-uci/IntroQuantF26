@@ -21,9 +21,6 @@ library(readxl)
 library(lme4)
 library(lmerTest)
 
-# Akaike Information Criterion
-library(cAIC4)
-
 # Estimated marginal means for post-hoc testing
 library(emmeans)
 ```
@@ -394,23 +391,28 @@ Moist_Day_Model = lmer(value ~ Day + (1|Treatment) + (1|Block),
 plot(Moist_Day_Model)
 ```
 
-Our model needs to be weighted to account for heterogeneity of variance.
+Our model clearly does not exhibit homogeneity of variance. We'll investigate the data to check for outliers.
+
+```{r}
+# Checking data for outliers
+Moist_Day_ANOVA
+```
+
+We have no outliers that are valid to remove, and will thus have to weight our model for variance.
 
 ```{r}
 # Creating a mixed-effects model for VWC ~ Day with lmer(), with Treatment and Block as random effects abd weighting for variance added by applying varWeights to a varClasses function fitting our residuals
 Moist_Day_Model = lmer(value ~ Day + (1|Treatment) + (1|Block),
-  data = Moist_Data_Day1, weights = varWeights(
+  data = Moist_Day_ANOVA, weights = varWeights(
     varConstPower(form = ~Treatment)
     )
   )
 
 # Checking for normality in VWC with hist()
-hist(Moist_Day_ANOVA$value)
+hist(Moist_Day_ANOVA$value, blocks = 30)
 ```
 
-Y'all this is so fucked
-
-# Fix this. at some point
+Our data is not normally distributed, but we can assume normality since our sample size is large enough for the central limit theorem to apply (n = 82).
 
 #### Conducting ANOVA Test
 
@@ -638,7 +640,25 @@ hist(x = SPAD_Moist_Day1$SPAD_Value)
 hist(x = SPAD_Moist_Day2$SPAD_Value)
 ```
 
-Our Day 1 data have sufficient homogeneity of distribution and appear to normal. Day 2 does have homogeneity of variance but is skewed slightly, however we will still assume normality since our sample size is small. We can thus continue with a simple regression test.
+Our Day 1 data do not exhibit homogeneity of variance but do appear to normal. Day 2 does have homogeneity of variance but is skewed slightly; since the central limit theorem barely applies and we already need to check for removable outliers in our Day 1 data, we will investigate both.
+
+```{r}
+# Visually checking both data for outliers
+SPAD_Moist_Day1
+SPAD_Moist_Day2
+```
+
+None of the outlier SPAD values in either data set can be removed. We will weight the Day 1 model for variance and assume normality for Day 2 under the central limit theorem.
+
+```{r}
+# Re-drawing linear mixed-effects model for the Day 1 data, weighting for variance with varWeights() and a varClasses function matching the shape of the plot of residuals
+SPAD_Moist_Day1_Model = lmer(
+  SPAD_Value ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
+  data = SPAD_Moist_Day1, weights = varWeights(
+    varPower(~Treatment)
+    )
+  )
+```
 
 #### Conducting Regression Test
 
@@ -648,7 +668,7 @@ summary(SPAD_Moist_Day1_Model)
 summary(SPAD_Moist_Day2_Model)
 ```
 
-A model of SPAD value as a function of VWC with block integrated as a random effect and no interactions with treatment showed no significant relationship between the two measurements on either day (p1 = 0.32, p2 = 0.96). We thus cannot reject our null hypothesis and lack support for a relationship between the two values. At the very least, VWC alone is not the primary driver of plant health seemingly. We will conduct an identical regression for plant height to explore this further.
+A model of SPAD value as a function of VWC with block integrated as a random effect and no interactions with treatment showed no significant relationship between the two measurements on either day (p1 = 0.33, p2 = 0.96). We thus cannot reject our null hypothesis and lack support for a relationship between the two values. At the very least, VWC does not appear to be a good predictor of SPAD value.
 
 #### Visualizing Regression Results
 
@@ -658,7 +678,7 @@ SPAD_Moist_combined |> ggplot() +
   aes(x = VWC, y = SPAD_Value) +
   geom_point(aes(color = Day)) +
   facet_wrap(~Day, scales = "free_x") +
-  geom_text(label = c("p = 0.32"),
+  geom_text(label = c("p = 0.33"),
             x = 0.25, y = 45) +
   geom_text(label = c("p = 0.96"),
             x = 7, y = 45) +
@@ -723,7 +743,7 @@ Height_Moist_combined
 We'll again be faceting by Day for all these graphs.
 
 ```{r}
-# Generating scatter plot with a best fit line using ggplot() + geom_point() + geom_smooth()
+# Generating scatter plot with a best fit line using ggplot() + geom_point() + geom_smooth(), faceted with facet_wrap()
 Height_Moist_combined |> ggplot() +
   aes(x = VWC, y = Seedling_Ht_cm) +
   geom_point() +
@@ -747,9 +767,17 @@ Height_Moist_Alive = Height_Moist_combined |>
 Height_Moist_Alive
 ```
 
-There's no reason to drop any of these outliers so we'll just move forward for now.
+Our two highest outliers are natural recruits (NR), which had an indeterminate amount of time to grow compared to the seedlings we planted. We'll cut them and recheck our plots.
 
 ```{r}
+# Removing NR outliers with filter()
+Height_Moist_Alive = Height_Moist_Alive |>
+  filter(Seedling_Ht_cm < 60)
+
+# Visual verification
+Height_Moist_Alive
+
+# Generating scatter plot with a best fit line using ggplot() + geom_point() + geom_smooth()
 Height_Moist_Alive |> ggplot() +
   aes(x = VWC, y = Seedling_Ht_cm) +
   geom_point(aes(color = Day)) +
@@ -792,27 +820,23 @@ plot(Height_Moist_Day1_Model)
 plot(Height_Moist_Day2_Model)
 ```
 
-Day 1's model, unsurprisingly, has no homogeneity of variance. We will try a log transformation on the data for this model.
+Day 1's model, unsurprisingly, has no homogeneity of variance, but Day 2 does exhibit homogeneity of variance and is an acceptable model. To keep the two comparable, we'll weight the Day 1 model for variance.
 
 ```{r}
-# Creating mixed effect model for Day 1 with lmer(), with Treatment, Multiple_Seedling, and Block as random effects and a log() transformation
+# Creating mixed effect models for each Day with lmer(), with Treatment, Multiple_Seedling, and Block as random effects and weighting for variance done with varWeights() applied to a varClasses function matching the shape of our residuals
 Height_Moist_Day1_Model = lmer(
-  log(Seedling_Ht_cm) ~ log(VWC) + (1|Treatment) + (1|Multiple_Seedling) +
-    (1|Block), data = Height_Moist_Day1)
+  Seedling_Ht_cm ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
+  data = Height_Moist_Day1, weights = varWeights(
+    varPower(~Treatment)
+    )
+  )
 
-# Checking plot of residuals vs. fitted for this model
-plot(Height_Moist_Day1_Model)
-```
-
-This has established homogeneity of variance, so we will continue with this model and check for normality.
-
-```{r}
 # Checking normality of both models with hist()
 hist(x = Height_Moist_Day1$Seedling_Ht_cm)
 hist(x = Height_Moist_Day2$Seedling_Ht_cm)
 ```
 
-Day 2's data is roughly normal but Day 1 is noticeably skewed. Since our sample size for that day is small, however, we will assume normality and continue with a simple regression test.
+The data for both days do have a tail but appear normal enough, so we can continue with a simple regression test.
 
 #### Conducting Simple Regression Test
 
@@ -822,7 +846,7 @@ summary(Height_Moist_Day1_Model)
 summary(Height_Moist_Day2_Model)
 ```
 
-A model of plant height as a function of volumetric water content, with block, treatment, and multiple saplings integrated as random effects, showed no significant relationship between the two measurements on either day (p1 = 0.189, p2 = 0.396). We thus cannot reject our null hypothesis and lack support for a relationship between the two values. Much like in the case of leaf count, volumetric water content does not appear to be the sole predictor of plant height.
+A model of plant height as a function of volumetric water content, with block, treatment, and multiple saplings integrated as random effects, showed no significant relationship between the two measurements on either day (p1 = 0.421, p2 = 0.396). We thus cannot reject our null hypothesis and lack support for a relationship between the two values. Much like in the case of leaf count, volumetric water content does not appear to be a good predictor of plant height.
 
 #### Visualizing Regression Results
 
@@ -832,8 +856,8 @@ Height_Moist_Day1 |> ggplot() +
   aes(x = log(VWC), y = log(Seedling_Ht_cm)) +
   geom_point() +
   geom_text(
-    label = c("p = 0.189"),
-    x = -3.25, y = 4
+    label = c("p = 0.421"),
+    x = -3, y = 3.25
   ) +
   theme_bw() +
   labs(
@@ -889,7 +913,7 @@ Leaf_condensed
 
 # Combining tibbles with left_join() to blend identical columns
 Leaf_Moist_combined = left_join(Leaf_condensed, Moist_condensed,
-                                join_by(Block, Treatment, Day)
+  join_by(Block, Treatment, Day)
 )
 
 # Visual verification
@@ -926,25 +950,16 @@ This is clearly skewed by several outlier data points. We will visually check ou
 Leaf_Moist_combined
 ```
 
-Since there is no reason to remove these outliers, we'll test a log transformation.
+Two of our outliers are natural recruits and can be cut. The largest outlier is part of the open sky treatment but deviates so far from expectation we will still cut it, noting this in our final figure, and re-visualize our data.
 
 ```{r}
-# Creating scatter plot with a best-fit-line using ggplot() + geom_point() + geom_smooth(), faceted using facet_wrap() and with a log() transformation applied to aes()
-Leaf_Moist_combined |> ggplot() +
-  aes(x = log(VWC), y = log(Num_leaves)) +
-  geom_point(aes(color = Day)) +
-  geom_smooth(method = "lm", se = FALSE, color = "black") +
-  facet_wrap(~Day, scales = "free_x") +
-  theme_bw() +
-  labs(
-    x = "Volumetric water content (as a percentage)",
-    y = "Leaf count"
-  )
-```
+# Removing outliers with filter()
+Leaf_Moist_combined = Leaf_Moist_combined |>
+  filter(Num_leaves < 30)
 
-This has unfortunately fixed nothing. We'll have to account for unequal variance in our model.
+# Visual verification
+Leaf_Moist_combined
 
-```{r}
 # Creating scatter plot with a best-fit-line using ggplot() + geom_point() + geom_smooth(), faceted using facet_wrap()
 Leaf_Moist_combined |> ggplot() +
   aes(x = VWC, y = Num_leaves) +
@@ -958,7 +973,7 @@ Leaf_Moist_combined |> ggplot() +
   )
 ```
 
-Scatter plot of leaf count as a function of volumetric water count, faceted by sampling day. Visuals are heavily skewed by a few outlier data points. Attempting to ignore the skew, there appears to be no noticeable relationship between leaf count and volumetric water content both before and after the storm.
+Scatter plot of leaf count as a function of volumetric water count, faceted by sampling day. Visuals are heavily skewed by a few large data points. There appears to be a negative relationship between leaf count and volumetric water content before the storm and a weakly positive relationship after.
 
 #### Checking Prerequisites for a Linear Regression
 
@@ -974,7 +989,7 @@ Leaf_Moist_Day2 = Leaf_Moist_combined |>
 Leaf_Moist_Day1
 Leaf_Moist_Day2
 
-# Creating mixed effect models for each Day using lmer() with Treatment, Multiple_Seedling, and Block as random effects
+# Creating mixed-effects models for each Day using lmer() with Treatment, Multiple_Seedling, and Block as random effects
 Leaf_Moist_Day1_Model = lmer(
   Num_leaves ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
   data = SPAD_Moist_Day1)
@@ -988,39 +1003,54 @@ plot(Leaf_Moist_Day1_Model)
 plot(Leaf_Moist_Day2_Model)
 ```
 
-Unsurprisingly, our residuals show unequal variance. We will need to weigh our models for variance to account for this.
+Our Day 1 data exhibits unequal variance but our Day 2 data does have homogeneity of variance. We will re-draw our Day 1 model, weighted for variance, and continue with our prerequisite check.
 
 ```{r}
+# Creating mixed effect models for each Day using lmer() with Treatment, Multiple_Seedling, and Block as random effects and weighting for variance with varWeights applied to a varClasses function fitting the shape of our residuals
 Leaf_Moist_Day1_Model = lmer(
   Num_leaves ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
   data = SPAD_Moist_Day1, weights = varWeights(
-    varExp(form = ~Treatment)
+    varPower(~Treatment)
     )
   )
 
-Leaf_Moist_Day2_Model = lmer(
-  Num_leaves ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
-  data = Leaf_Moist_Day2, weights = varWeights(
-    varExp(form = ~Treatment)
-    )
-  )
-
-hist(Leaf_Moist_Day1$Num_leaves)
-hist(Leaf_Moist_Day2$Num_leaves)
+# Checking histogram of leaf count using hist()
+hist(Leaf_Moist_Day1$Num_leaves, breaks = 16)
+hist(Leaf_Moist_Day2$Num_leaves, breaks = 16)
 ```
 
-# Need to check Day 2, seems like varExp may not be correct
+Our models are not normally distributed. We will test a log transformation for both.
 
-Our models are still heavily skewed but we'll assume normality due to low sample size. Thus, we'll continue with a simple mixed-effects regression test.
+```{r}
+# Creating mixed-effects models for each Day using lmer() with Treatment, Multiple_Seedling, and Block as random effects with a log() transformation applied
+Leaf_Moist_Day1_Model_log = lmer(
+  log(Num_leaves) ~ log(VWC) + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
+  data = SPAD_Moist_Day1)
+
+Leaf_Moist_Day2_Model_log = lmer(
+  log(Num_leaves) ~ log(VWC) + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
+  data = Leaf_Moist_Day2)
+
+# Viewing plot of residuals vs. fitted for our models with plot()
+plot(Leaf_Moist_Day1_Model_log)
+plot(Leaf_Moist_Day2_Model_log)
+
+# Checking histogram of log leaf count using hist()
+hist(log(Leaf_Moist_Day1$Num_leaves))
+hist(log(Leaf_Moist_Day2$Num_leaves))
+```
+
+The log-transformed models both exhibit sufficient homogeneity of variance and normality, so we will continue with our regression tests.
 
 #### Conducting Simple Regression Test
 
 ```{r}
-summary(Leaf_Moist_Day1_Model)
-summary(Leaf_Moist_Day2_Model)
+# Visualizing summary table of our models with summary()
+summary(Leaf_Moist_Day1_Model_log)
+summary(Leaf_Moist_Day2_Model_log)
 ```
 
-p = 0.622, p - 0.0507
+A model of log leaf count as a function of log volumetric water content, with block, treatment, and multiple saplings integrated as random effects, showed no significant relationship between the two measurements on either day (p1 = 0.366, p2 = 0.550). We thus cannot reject our null hypothesis and lack support for a relationship between the two values. VWC once again does not appear to be a good predictor of leaf count across treatments.
 
 #### Visualizing Regression Results
 
@@ -1031,8 +1061,8 @@ Leaf_Moist_Day1 |> ggplot() +
   geom_point(aes(color = Day)) +
   facet_wrap(~Day, scales = "free_x") +
   geom_text(
-    label = c("p = 0.622"),
-    x = 0.25, y = 32
+    label = c("p = 0.366"),
+    x = 0.2, y = 20
     ) +
   theme_bw() +
   labs(
@@ -1046,8 +1076,8 @@ Leaf_Moist_Day2 |> ggplot() +
   geom_point(aes(color = Day)) +
   facet_wrap(~Day, scales = "free_x") +
   geom_text(
-    label = c("p = 0.0507"),
-    x = 6.5, y = 32
+    label = c("p = 0.550"),
+    x = 6.5, y = 12.75
   ) +
   theme_bw() +
   labs(
@@ -1056,7 +1086,7 @@ Leaf_Moist_Day2 |> ggplot() +
   )
 ```
 
-results
+results. Notably, there was a single outlier data point for the OS treatment with a leaf count of 122 removed.
 
 ## 2.5. Evaluating SPAD Value by Treatment
 
@@ -1141,7 +1171,7 @@ anova(SPAD_Model)
 emmeans(SPAD_Model, pairwise ~ Treatment, adjust = "Tukey")
 ```
 
-Our ANOVA table shows significant differences found amongst treatments (p = 2.299e-05), identified as AC - NR (p = 0.0010) and AC - OS (0.0019) after a Tukey post-hoc test.
+Our ANOVA table shows significant differences found amongst treatments (p = 2.299e-05), identified as AC - DT (p = 0.0246), AC - NR (p \< 0.0001), and AC - OS (p = 0.0016) after a Tukey post-hoc test.
 
 #### Visualizing ANOVA Results
 
@@ -1170,7 +1200,7 @@ SPAD_Data_no_NA |>
     position = position_dodge(0.9), width = 0.2
   ) +
   geom_text(
-    label = c("AB", "[A]BCD", "BCD", "BCD"),
+    label = c("A", "BCD", "BCD", "BCD"),
     vjust = -1.25, size = 3
   ) +
   theme_bw() +
@@ -1185,7 +1215,7 @@ SPAD_Data_no_NA |>
   )
 ```
 
-Column plot of average SPAD values between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted at the top of each column as well. The adult canopy treatment was found to differ from natural recruits and open sky treatments, specifically, while no differences were found between any of the other three treatments. Notably, the adult canopy and dead tree treatments were found to have a p-value of \~0.06 in their comparison, which is above the 0.05 threshold but close enough to still be noteworthy. It is possible that the adult canopy treatment has greener leaves due to the canopy overhead limiting the amount of light reaching the seedling, demanding a darker coloration to absorb more of the limited light reaching its leaves.
+Column plot of average SPAD values between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted at the top of each column as well. The adult canopy treatment was found to differ from natural recruits and open sky treatments, specifically, while no differences were found between any of the other three treatments. It is possible that the adult canopy treatment has greener leaves due to the canopy overhead limiting the amount of light reaching the seedling, demanding a darker coloration to absorb more of the limited light reaching its leaves.
 
 ## 2.6. Evaluating Seedling Height by Treatment
 
@@ -1258,11 +1288,28 @@ We can immediately see that there is not homogeneity of variance for our data. W
 Height_Data_Alive
 ```
 
-There is no reason to remove outliers, so we will have to weight our lmer model to account for unequal variance.
+Our two outliers are once again natural recruits, so we will remove these and re-draw our model.
+
+```{r}
+# Removing outliers with filter()
+Height_Data_Alive = Height_Data_Alive |>
+  filter(Seedling_Ht_cm < 60)
+
+# Visual verification
+Height_Data_Alive
+
+# Generating mixed effects model for seedling height data with lmer(), using Block, Date, and Multiple_Seedling as random effects
+Height_Model = lmer(
+  Seedling_Ht_cm ~ Treatment + (1|Block) + (1|Date) + (1|Multiple_Seedling),
+  data = Height_Data_Alive)
+
+# Checking plot of residuals vs. fitted for our model with plot()
+plot(Height_Model)
+```
+
+There still isn't homogeneity of variance, so we will need to weigh our model for variance.
 
 # ASK ABOUT THIS DURING OFFICE HOURS
-
-I need to weight this model for variance. It has a *weights* argument that needs a vector of values and I know the formula for weighting by variance is 1/Variance. I'm using varWeights with a varClasses function as an argument, selecting the specific function to fit the shape of the residuals, but want to know if I'm approaching this correctly.
 
 ```{r}
 # Generating mixed effects model for seedling height data with lmer(), using Block, Date, and Multiple_Seedling as random effects. Weights set using varWeights() applied to a varClasses function fitting the shape of our residuals
@@ -1289,7 +1336,7 @@ anova(Height_Model)
 emmeans(Height_Model, pairwise ~ Treatment, adjust = "Tukey")
 ```
 
-Our ANOVA table shows significant differences found amongst treatments (p = 1.329e-07), identified as AC - NR (p = 0.0016), AC - OS (p = 0.0229), DT - NR (p = 0.0044), and DT-OS (p = 0.0246) after a Tukey post-hoc test.
+Our ANOVA table shows significant differences found amongs treatments (p = 1.329e-07), identified as AC - NR (p \< 0.0001), AC - OS (p \< 0.0001), DT - NR (p \< 0.0001), and DT-OS (p \< 0.0001) after a Tukey post-hoc test.
 
 #### Visualizing ANOVA Results
 
@@ -1401,23 +1448,36 @@ Leaf_Model = lmer(
 plot(Leaf_Model)
 ```
 
-While this has reduced noise in our data, this still has unequal variance. We will need to weight our lmer model to account for this.
-
-# Same issue as previous ANOVA
+While this has reduced noise in our data, this still has unequal variance. We will check for removable outliers.
 
 ```{r}
-# Generating mixed effects model for leaf count data with lmer(), using Block, Date, and Multiple_Seedling as random effects. Weighted for variance with varWeights() applied to a varClasses() function fitting our residuals
+# Visually checking for outliers
+Leaf_Model_Data
+```
+
+As observed previously, our highest leaf counts are all natural recruits (plus the OS treatment outlier observed earlier). We will cut all data with a count higher than 32, as this is the value where the first major leap in leaf count occurs once our data transitions into the large NR group, and re-draw our model.
+
+```{r}
+# Removing outliers with filter()
+Leaf_Model_Data = Leaf_Model_Data |>
+  filter(Num_leaves <= 32)
+
+# Visual verification
+Leaf_Model_Data
+
+# Generating mixed effects model for leaf count data with lmer(), using Block, Date, and Multiple_Seedling as random effects
 Leaf_Model = lmer(
   Num_leaves ~ Treatment + (1|Block) + (1|Date) + (1|Multiple_Seedling),
-  data = Leaf_Model_Data, weights = varWeights(
-    varExp(form = ~Treatment)
-    )
-  )
+  data = Leaf_Model_Data)
 
+# Checking residuals vs. fitted plot with plot()
+plot(Leaf_Model)
+
+# Viewing histogram of leaf counts with hist() to check for normality
 hist(Leaf_Model_Data$Num_leaves)
 ```
 
-results
+This While our data is skewed slightly to the left, we can assume normality via the central limit theorem since our sample size is over 30 (n = 68).
 
 #### Conducting ANOVA Test
 
@@ -1429,7 +1489,7 @@ anova(Leaf_Model)
 emmeans(Leaf_Model, pairwise ~ Treatment, adjust = "Tukey")
 ```
 
-results
+Our ANOVA table shows significant differences found amongst treatments (p = 5.455e-10), identified as AC - NR (p \< 0.0001), AC - OS (0.0012), DT - NR (p \< 0.0001), DT - OS (p = 0.0005), and NR - OS (p = 0.0165) after a Tukey post-hoc test.
 
 #### Visualizing ANOVA Results
 
@@ -1458,7 +1518,7 @@ Leaf_Model_Data |>
   position = position_dodge(0.9), width = 0.2
   ) +
   geom_text(
-    label = c("ABD", "ABD", "CD", "ABCD"),
+    label = c("AB", "AB", "C", "D"),
     vjust = -0.75, hjust = 2.25, size = 3
   ) +
   theme_bw() +
@@ -1473,4 +1533,4 @@ Leaf_Model_Data |>
   )
 ```
 
-results
+results. Leaf counts higher than 32 were cut from our test, as these represented natural recruits that likely had greater time to grow and thus had leaf counts inconsistent with the seedlings we planted. We also cut an outlier OS seedling with a leaf count of 122 due to this being a massive outlier for plants in this treatment group.
