@@ -365,7 +365,7 @@ Moist_Data_Clean |>
   ) +
   labs(
     x = "Day",
-    y = "Volumetric water count (as a percentage)"
+    y = "Volumetric Water Content (as a percentage)"
   )
 ```
 
@@ -407,7 +407,16 @@ Our model clearly does not exhibit homogeneity of variance. We'll investigate th
 Moist_Day_ANOVA
 ```
 
-We have no outliers that are valid to remove, but our sample size of 78 may be enough for the ANOVA function to not need homogeneity of variance to function correctly.
+We have no outliers that are valid to remove, so we will compare sample sizes between treatments to see if they are comparable.
+
+```{r}
+# Generating counts of values for each treatment with summarise()
+Moist_Day_ANOVA |>
+  group_by(Treatment) |>
+  summarise(n = n())
+```
+
+Our overall sample size is large and sample sizes for the individual treatments are comparable, so we will assume that the anova() function is robust enough to handle the heteroskedasticity.
 
 ```{r}
 # Checking for normality in VWC with hist()
@@ -451,8 +460,10 @@ Moist_Day_ANOVA |>
   ),
   position = position_dodge(0.9), width = 0.2
   ) +
-  geom_text(label = c("A", "B"),
-    vjust = -0.5, hjust = 5.5, size = 3) +
+  geom_text(label = c("", "B"),
+    vjust = 6, size = 6) +
+  geom_text(label = c("A", ""),
+    vjust = -0.75, size = 6) +
   theme_bw() +
   theme(
     legend.position = "none",
@@ -461,11 +472,11 @@ Moist_Day_ANOVA |>
   ) +
   labs(
     x = "Day",
-    y = "Volumetric water count (as a percentage)"
+    y = "Volumetric Water Content (as a percentage)"
   )
 ```
 
-results
+Column plot of mean volumetric water content in soils between sampling days, with standard error bars depicted at the top of each column. A mixed-effects ANOVA showed a strongly significant difference in VWC between the two days (p \< 2.2e-16, t = 14.276); results are denoted on the individual columns.
 
 ## 2.2. Regression Testing with SPAD_Value \~ VWC
 
@@ -574,7 +585,7 @@ SPAD_Moist_combined |> ggplot() +
   facet_wrap(~Day, scales = "free_x") +
   theme_bw() +
   labs(
-    x = "Volumetric water content (as a percentage)",
+    x = "Volumetric Water Content (as a percentage)",
     y = "SPAD value"
   )
 ```
@@ -681,18 +692,18 @@ SPAD_Moist_combined |> ggplot() +
   aes(x = VWC, y = SPAD_Value) +
   geom_point(aes(color = Day)) +
   facet_wrap(~Day, scales = "free_x") +
-  geom_text(label = c("p = 0.42"),
-            x = 0.25, y = 45) +
-  geom_text(label = c("p = 0.96"),
+  geom_text(label = c("p = 0.42 \nt = 0.841"),
+            x = 0.3, y = 45) +
+  geom_text(label = c("p = 0.96 \nt = 0.051"),
             x = 7, y = 45) +
   theme_bw() +
   labs(
-    x = "Volumetric water content (as a percentage)",
-    y = "SPAD value"
+    x = "Volumetric Water Content (as a percentage)",
+    y = "SPAD Value (in SPADs)"
   )
 ```
 
-Scatter plot of SPAD value as a function of volumetric water content across all treatment types, faceted by day. Results of a simple regression are displayed on each facet at the top left of each facet. There appears to be no relationship between SPAD value and volumetric water content both before and after the rainstorm occurred. This could be the result of SPAD value being determined by a combination of multiple factors, not just volumetric water content alone, but could equally be a function of soil water content being insufficient to support oak sapling development. Plant health could also be overall poor and yellowing the seedling's leaves.
+Scatter plot of SPAD value as a function of volumetric water content across all treatment types, faceted by sampling day. Results of a simple regression are displayed on the top left of each facet. There appears to be no relationship between SPAD value and volumetric water content both before and after the rainstorm occurred.
 
 ## 2.3. Regression Testing with Leaf Count \~ VWC
 
@@ -746,8 +757,8 @@ Leaf_Moist_combined |> ggplot() +
   facet_wrap(~Day, scales = "free_x") +
   theme_bw() +
   labs(
-    x = "Volumetric water content (as a percentage)",
-    y = "Leaf count"
+    x = "Volumetric Water Content (as a percentage)",
+    y = "Leaf Count (# of individual leaves)"
   )
 ```
 
@@ -851,29 +862,31 @@ A model of log leaf count as a function of log volumetric water content, with bl
 #### Visualizing Regression Results
 
 ```{r}
-# Creating scatter plot for Day 1 data using ggplot() + geom_point(), faceted using facet_wrap()
+# Creating scatter plot for our data using ggplot() + geom_point(), faceted using facet_wrap()
 Leaf_Moist_combined |> ggplot() +
   aes(x = VWC, y = Num_leaves) +
   geom_point(aes(color = Day)) +
   facet_wrap(~Day, scales = "free_x") +
   geom_text(
-    label = c("p = 0.2578"),
+    label = c("p = 0.2578\nt = -1.165"),
     x = 0.4, y = 20
     ) +
   geom_text(
-    label = c("p = 0.5495"),
+    label = c("p = 0.5495\nt = -0.606"),
     x = 7.35, y = 20
   ) +
   theme_bw() +
   labs(
     x = "Volumetric water content (as a percentage)",
-    y = "Leaf count"
+    y = "Leaf Count (# of individual leaves)"
   )
 ```
 
-results. Notably, there was a single outlier data point for the OS treatment with a leaf count of 122 removed.
+Scatter plot of leaf count as a function of volumetric water content across all treatment types, faceted by sampling day. Results of a simple regression are displayed on the top left of each facet. There appears to be no relationship between leaf count and volumetric water content both before and after the rainstorm occurred.
 
-## 2.5. Evaluating SPAD Value by Treatment
+*Note: an outlier sapling from the OS treatment with a leaf count of 112 was removed.*
+
+## 2.4. Evaluating SPAD Value by Treatment
 
 #### Initial Visualization of SPAD Value by Treatment
 
@@ -915,7 +928,7 @@ SPAD_Data_Clean |>
   ) +
   labs(
     x = "Treatment",
-    y = "SPAD Value"
+    y = "SPAD Value (in SPADs)"
   )
 ```
 
@@ -948,7 +961,16 @@ Our data does not have homogeneity of variance. We'll check it visually for outl
 SPAD_Data_no_NA
 ```
 
-We cannot remove any outliers here, but our sample size is large enough that we can assume the anova() function will be robust enough to accommodate the uneven variance.
+We cannot remove any outliers here, so we will compare sample sizes per treatment to see if they're comparable.
+
+```{r}
+# Generating count of values per treatment with summarise()
+SPAD_Data_no_NA |>
+  group_by(Treatment) |>
+  summarise(n = n())
+```
+
+Our overall sample size is large and the individual sample size for each treatment is comparable, so we will hope the anova() command robustness will accommodate the heteroskedasticity.
 
 ```{r}
 # Checking normality in SPAD_Value using hist()
@@ -967,7 +989,7 @@ anova(SPAD_Model)
 emmeans(SPAD_Model, pairwise ~ Treatment, adjust = "Tukey")
 ```
 
-Our ANOVA table shows significant differences found amongst treatments (p = 2.299e-05), identified as AC - DT (p = 0.0246), AC - NR (p \< 0.0001), and AC - OS (p = 0.0016) after a Tukey post-hoc test.
+Our ANOVA table shows significant differences found amongst treatments (p = 0.0002576), identified as AC - DT (p = 0.0116) and AC - OS (p = 0.0010) after a Tukey post-hoc test.
 
 #### Visualizing ANOVA Results
 
@@ -996,8 +1018,8 @@ SPAD_Data_no_NA |>
     position = position_dodge(0.9), width = 0.2
   ) +
   geom_text(
-    label = c("A", "BCD", "BCD", "BCD"),
-    vjust = -1.25, size = 3
+    label = c("A", "BC", "BC"),
+    vjust = 5, size = 6
   ) +
   theme_bw() +
   theme(
@@ -1007,13 +1029,13 @@ SPAD_Data_no_NA |>
   ) +
   labs(
     x = "Treatment",
-    y = "Mean SPAD Value"
+    y = "SPAD Value (in SPADs)"
   )
 ```
 
-Column plot of average SPAD values between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted at the top of each column as well. The adult canopy treatment was found to differ from natural recruits and open sky treatments, specifically, while no differences were found between any of the other three treatments. It is possible that the adult canopy treatment has greener leaves due to the canopy overhead limiting the amount of light reaching the seedling, demanding a darker coloration to absorb more of the limited light reaching its leaves.
+Column plot of mean SPAD values between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within each column (p = 0.0002576, F = 8.6531). The adult canopy treatment was found to differ from the dead tree (p = 0.0116) and open sky (p = 0.0010) treatments.
 
-## 2.6. Evaluating Seedling Height by Treatment
+## 2.5. Evaluating Seedling Height by Treatment
 
 #### Initial Visualization of Seedling Height by Treatment
 
@@ -1056,7 +1078,7 @@ Height_Data_Clean |>
   )
 ```
 
-Column plot of average seedling height at each treatment, with standard error bars visualized at the top of each column. There does appear to be differences in seedling height inverse to those observed in SPAD value. AC and DT appear roughly equivalent, while NR and OS appear to be higher in comparison. It is worth noting that standard error for the latter two is also extremely high and that the currently depicted trends could be deceiving as a result.
+Column plot of average seedling height at each treatment, with standard error bars visualized at the top of each column. There does appear to be differences in seedling height inverse to those observed in SPAD value. AC and DT appear roughly equivalent, while OS appears to be higher in comparison. It is worth noting that standard error for the latter two is also extremely high and that the currently depicted trends could be deceiving as a result.
 
 #### Checking Prerequisites for ANOVA Testing
 
@@ -1084,40 +1106,20 @@ We can immediately see that there is not homogeneity of variance for our data. W
 Height_Data_Alive
 ```
 
-Our two outliers are once again natural recruits, so we will remove these and re-draw our model.
+We have no reason to remove any values here, so we will check counts for each treatment to see if they're comparable.
 
 ```{r}
-# Removing outliers with filter()
-Height_Data_Alive = Height_Data_Alive |>
-  filter(Seedling_Ht_cm < 60)
-
-# Visual verification
-Height_Data_Alive
-
-# Generating mixed effects model for seedling height data with lmer(), using Block, Date, and Multiple_Seedling as random effects
-Height_Model = lmer(
-  Seedling_Ht_cm ~ Treatment + (1|Block) + (1|Date) + (1|Multiple_Seedling),
-  data = Height_Data_Alive)
-
-# Checking plot of residuals vs. fitted for our model with plot()
-plot(Height_Model)
+# Generating count of values per treatment with summarise()
+Height_Data_Alive |>
+  group_by(Treatment) |>
+  summarise(n = n())
 ```
 
-There still isn't homogeneity of variance, so we will need to weigh our model for variance.
-
-# ASK ABOUT THIS DURING OFFICE HOURS
+We unfortunately lack any way to reliably account for heteroskedasticity, so we will have to hope the small degree of variation means anova() will be robust enough to handle it.
 
 ```{r}
-# Generating mixed effects model for seedling height data with lmer(), using Block, Date, and Multiple_Seedling as random effects. Weights set using varWeights() applied to a varClasses function fitting the shape of our residuals
-Height_Model = lmer(
-  Seedling_Ht_cm ~ Treatment + (1|Block) + (1|Date) + (1|Multiple_Seedling),
-  data = Height_Data_Alive, weights = varWeights(
-    varExp(form = ~Treatment)
-    )
-  )
-
 # Checking histogram of Seedling_Ht_cm with hist() to check for normality
-hist(Height_Data_Alive$Seedling_Ht_cm)
+hist(Height_Data_Alive$Seedling_Ht_cm, breaks = 10)
 ```
 
 Our data has a tail but appears mostly normal. We will proceed with a multiple-effects ANOVA.
@@ -1132,7 +1134,7 @@ anova(Height_Model)
 emmeans(Height_Model, pairwise ~ Treatment, adjust = "Tukey")
 ```
 
-Our ANOVA table shows significant differences found amongs treatments (p = 1.329e-07), identified as AC - NR (p \< 0.0001), AC - OS (p \< 0.0001), DT - NR (p \< 0.0001), and DT-OS (p \< 0.0001) after a Tukey post-hoc test.
+Our ANOVA table shows significant differences found amongs treatments (p = 1.743e-07), identified as AC - OS (p = 0.0001) and DT-OS (p \< 0.0001) after a Tukey post-hoc test.
 
 #### Visualizing ANOVA Results
 
@@ -1161,8 +1163,12 @@ Height_Data_Alive |>
   position = position_dodge(0.9), width = 0.2
   ) +
   geom_text(
-    label = c("AB", "AB", "CD", "CD"),
-    vjust = -0.75, hjust = 2.25, size = 3
+    label = c("", "", "B"),
+    vjust = 6, size = 6
+  ) +
+  geom_text(
+    label = c("A", "A", ""),
+    vjust = 3, size = 6
   ) +
   theme_bw() +
   theme(
@@ -1176,9 +1182,9 @@ Height_Data_Alive |>
   )
 ```
 
-Column plot of average seedling height between treatments, with standard error bars depicted at the top of each column. Results from a one-way multiple-effects ANOVA are denoted at the top of each column as well. The Adult Canopy/Dead Tree treatments were found to be significantly different from the Natural Recruit/Open Sky treatments, with the two pairs each being statistically indistinct from one another. It is possible that the Natural Recruit and Open Sky treatments had more space to grow by virtue of the former representing seedlings naturally selected for ideal conditions for growth and the latter being planted in open terrain.
+Column plot of mean seedling height between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within each column (p = 1.743e-07, F = 25.836). The open sky treatment was found to differ from the adult canopy (p = 0.0001) and dead tree (p \< 0.0001) treatments.
 
-## 2.7. Evaluating Leaf Count by Treatment
+## 2.6. Evaluating Leaf Count by Treatment
 
 #### Initial Visualization of Leaf Count by Treatment
 
@@ -1219,7 +1225,7 @@ SPAD_Data_Clean |>
   ) +
   labs(
     x = "Treatment",
-    y = "Leaf count"
+    y = "Leaf Count (# of individual leaves)"
   )
 ```
 
@@ -1244,19 +1250,19 @@ Leaf_Model = lmer(
 plot(Leaf_Model)
 ```
 
-While this has reduced noise in our data, this still has unequal variance. We will check for removable outliers.
+While this has reduced noise in our data, there is a colossal outlier skewing our data. We will visually investigate.
 
 ```{r}
 # Visually checking for outliers
 Leaf_Model_Data
 ```
 
-As observed previously, our highest leaf counts are all natural recruits (plus the OS treatment outlier observed earlier). We will cut all data with a count higher than 32, as this is the value where the first major leap in leaf count occurs once our data transitions into the large NR group, and re-draw our model.
+Our outlier is the large OS treatment outlier observed earlier. We will remove this, noting its removal in our final figure, and re-draw our model.
 
 ```{r}
 # Removing outliers with filter()
 Leaf_Model_Data = Leaf_Model_Data |>
-  filter(Num_leaves <= 32)
+  filter(Num_leaves < 100)
 
 # Visual verification
 Leaf_Model_Data
@@ -1270,10 +1276,10 @@ Leaf_Model = lmer(
 plot(Leaf_Model)
 
 # Viewing histogram of leaf counts with hist() to check for normality
-hist(Leaf_Model_Data$Num_leaves)
+hist(Leaf_Model_Data$Num_leaves, breaks = 10)
 ```
 
-This While our data is skewed slightly to the left, we can assume normality via the central limit theorem since our sample size is over 30 (n = 68).
+While our data is skewed slightly to the left, we can assume normality via the central limit theorem since our sample size is over 30 (n = 56).
 
 #### Conducting ANOVA Test
 
@@ -1285,7 +1291,7 @@ anova(Leaf_Model)
 emmeans(Leaf_Model, pairwise ~ Treatment, adjust = "Tukey")
 ```
 
-Our ANOVA table shows significant differences found amongst treatments (p = 5.455e-10), identified as AC - NR (p \< 0.0001), AC - OS (0.0012), DT - NR (p \< 0.0001), DT - OS (p = 0.0005), and NR - OS (p = 0.0165) after a Tukey post-hoc test.
+Our ANOVA table shows significant differences found among treatments (p = 1.719e-06), identified as AC - OS (p \< 0.0001) and DT - OS (p = 0.0002) after a Tukey post-hoc test.
 
 #### Visualizing ANOVA Results
 
@@ -1314,8 +1320,8 @@ Leaf_Model_Data |>
   position = position_dodge(0.9), width = 0.2
   ) +
   geom_text(
-    label = c("AB", "AB", "C", "D"),
-    vjust = -0.75, hjust = 2.25, size = 3
+    label = c("A", "A", "B"),
+    vjust = 5, size = 6
   ) +
   theme_bw() +
   theme(
@@ -1325,8 +1331,10 @@ Leaf_Model_Data |>
   ) +
   labs(
     x = "Treatment",
-    y = "Leaf count"
+    y = "Leaf Count (# of individual leaves)"
   )
 ```
 
-results. Leaf counts higher than 32 were cut from our test, as these represented natural recruits that likely had greater time to grow and thus had leaf counts inconsistent with the seedlings we planted. We also cut an outlier OS seedling with a leaf count of 122 due to this being a massive outlier for plants in this treatment group.
+Column plot of mean leaf count between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within top of each column (p = 1.719e-06, F = 17.923). The open sky treatment was found to differ from the adult canopy (p \< 0.0001) and dead tree (p = 0.0002) treatments.
+
+*Note: an outlier sapling from the OS treatment with a leaf count of 112 was removed.*
