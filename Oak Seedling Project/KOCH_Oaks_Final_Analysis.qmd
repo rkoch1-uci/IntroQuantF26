@@ -334,6 +334,9 @@ Moist_Data_Clean |>
     )
   ) |>
   
+  # Converting Day into a factor with mutate()
+  mutate(Day = as.factor(Day)) |>
+  
   # Selecting VWC measurements only with filter()
   filter(VWC_or_PER == "VWC") |>
   
@@ -385,6 +388,9 @@ Moist_Day_ANOVA = Moist_Data_Clean |>
     ),
     .before = Team
   ) |>
+  
+  # Converting Day into a factor with mutate()
+  mutate(Day = as.factor(Day)) |>
   
   # Removing Date column with select()
   select(-Date) |>
@@ -989,7 +995,7 @@ anova(SPAD_Model)
 emmeans(SPAD_Model, pairwise ~ Treatment, adjust = "Tukey")
 ```
 
-Our ANOVA table shows significant differences found amongst treatments (p = 0.0002576), identified as AC - DT (p = 0.0116) and AC - OS (p = 0.0010) after a Tukey post-hoc test.
+Our ANOVA table shows significant differences found among treatments (p = 0.0002576), identified as AC - DT (p = 0.0116) and AC - OS (p = 0.0010) after a Tukey post-hoc test.
 
 #### Visualizing ANOVA Results
 
@@ -1115,7 +1121,7 @@ Height_Data_Alive |>
   summarise(n = n())
 ```
 
-We unfortunately lack any way to reliably account for heteroskedasticity, so we will have to hope the small degree of variation means anova() will be robust enough to handle it.
+We unfortunately lack any way to reliably account for heteroskedasticity, so we will have to hope the small unevenness in variation means anova() will be robust enough to handle it.
 
 ```{r}
 # Checking histogram of Seedling_Ht_cm with hist() to check for normality
