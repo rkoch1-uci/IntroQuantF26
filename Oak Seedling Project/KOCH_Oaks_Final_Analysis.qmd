@@ -983,39 +983,51 @@ Survivor_Data
 # Saving number of plots with multiple seedlings to a variable
 Multiple_plots = Height_Data_Clean |>
   
+  # Thinning MUltiple_Seedling data with distinct()
+  group_by(Tag_Num) |>
+  distinct(Multiple_Seedling, .keep_all = TRUE) |>
+  ungroup() |>
+  
   # Generating summary table of counts with summarise()
-  group_by(Treatment, Block, Multiple_Seedling) |>
+  group_by(Treatment, Block, Tag_Num, Multiple_Seedling) |>
   summarise(n = n()) |>
   
   # Selecting only the values with multiple seedlings using filter()
   ungroup() |>
-  filter(Multiple_Seedling == TRUE)
+  filter(Multiple_Seedling == TRUE) |>
+  
+  # Generating proportion of plots with multiple seedlings in overall plots using
+  # mutate()
+  mutate(
+    Plot_Ratio = n/3
+  ) |>
+  
+  # Removing excess columns with select()
+  select(-Multiple_Seedling, -n) |>
+  
+  # Taking average proportion of plot with multiple seedlings in overall plots using
+  # summarise()
+  group_by(Treatment, Block) |>
+  summarise(Mean_Plot_Ratio = mean(Plot_Ratio)) |>
+  ungroup()
 
 # Visual verification
 Multiple_plots
 
 # Joining the multiple seedling data onto the survivorship data with left_join()
 Survivor_Data = left_join(Survivor_Data, Multiple_plots, join_by(
-  Treatment, Block
+    Treatment, Block
+    )
   )
-)
 
 # Visual verification
 Survivor_Data
 
-# Cleaning survivorship data
-Survivor_Data = Survivor_Data |>
-  
-  # Removing Multiple_Seedling column with select()
-  select(-Multiple_Seedling) |>
-  
-  # Renaming n column with mutate()
-  rename(Multiple_Seedling_plots = n) |>
-  
-  # Removing NA values from our new column with mutate()
-  mutate(Multiple_Seedling_plots = case_when(
-    is.na(Multiple_Seedling_plots) == TRUE ~ 0,
-    is.na(Multiple_Seedling_plots) == FALSE ~ Multiple_Seedling_plots
+# Removing NA values from our new column with mutate()
+Survivor_Data = Survivor_Data|>
+  mutate(Mean_Plot_Ratio = case_when(
+    is.na(Mean_Plot_Ratio) == TRUE ~ 0,
+    is.na(Mean_Plot_Ratio) == FALSE ~ Mean_Plot_Ratio
     )
   )
 
@@ -1066,9 +1078,9 @@ Column plot of average survivorship for each treatment, with standard error bars
 #### Checking Prerequisites for ANOVA Testing
 
 ```{r}
-# Generating mixed-effects model for survivorship using lmer(), using Block, Total_Plants, and Multiple_Seedling_plots as random effects
+# Generating mixed-effects model for survivorship using lmer(), using Block, Total_Plants, and Mean_Plot_Ratio as random effects
 Survivor_Model = lmer(Survival ~ Treatment + (1|Block) + (1|Total_Plants) +
-  (1|Multiple_Seedling_plots), data = Survivor_Data)
+  (1|Mean_Plot_Ratio), data = Survivor_Data)
 
 # Checking plot of residuals vs. fitted for our model with plot()
 plot(Survivor_Model)
