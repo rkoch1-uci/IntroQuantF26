@@ -16,6 +16,7 @@ editor: visual
 # Standard data manipulation/visualization and data loading packages
 library(tidyverse)
 library(readxl)
+library(patchwork)
 
 # Mixed effect model packages
 library(lme4)
@@ -659,7 +660,7 @@ hist(x = SPAD_Moist_Day1$SPAD_Value)
 hist(x = SPAD_Moist_Day2$SPAD_Value)
 ```
 
-Our data do both exhibit sufficient homogeneity of variance, but only our Day 1 data appear to normal. Day 2 has a slight rightward skew; since the central limit theorem barely applies (n = 31), we will assume normality
+Our data do both exhibit sufficient homogeneity of variance, but neither appear to exhibit clear normality. We will test a log-transformation on both models.
 
 ```{r}
 # Creating mixed effect models for each Day using lmer() with Treatment, Multiple_Seedling, and Block as random effects
@@ -680,6 +681,20 @@ hist(log(SPAD_Moist_Day1$SPAD_Value), breaks = 10)
 hist(log(SPAD_Moist_Day2$SPAD_Value), breaks = 18)
 ```
 
+Our data still does not appear normal. We will conduct Shapiro-Wilk tests on our log-transformed models and compare these to the original models.
+
+```{r}
+# COnducting Shapiro-Wilk tests on our log models' residuals with shapiro.test()
+shapiro.test(resid(SPAD_Moist_Day1_Model_log))
+shapiro.test(resid(SPAD_Moist_Day2_Model_log))
+
+# COnducting Shapiro-Wilk tests on our old models' residuals with shapiro.test()
+shapiro.test(resid(SPAD_Moist_Day1_Model))
+shapiro.test(resid(SPAD_Moist_Day2_Model))
+```
+
+Both our log models (p1 = 0.1717, p2 = 0.7348) and our original models (p1 = 0.1278, p2 = 0.8758) are suitable/normal according to these results, so we will use our original models for the sake of simplicity.
+
 #### Conducting Regression Test
 
 ```{r}
@@ -693,20 +708,32 @@ A model of SPAD value as a function of VWC with block integrated as a random eff
 #### Visualizing Regression Results
 
 ```{r}
-# Generating scatter plot with no best-fit line using ggplot() + geom_point() + geom_smooth()
-SPAD_Moist_combined |> ggplot() +
+# Generating scatter plot for our data using ggplot() + geom_point() + geom_smooth()
+SPAD_Moist_Day1_Plot = SPAD_Moist_Day1 |> ggplot() +
   aes(x = VWC, y = SPAD_Value) +
-  geom_point(aes(color = Day)) +
-  facet_wrap(~Day, scales = "free_x") +
+  geom_point() +
   geom_text(label = c("p = 0.42 \nt = 0.841"),
             x = 0.3, y = 45) +
-  geom_text(label = c("p = 0.96 \nt = 0.051"),
-            x = 7, y = 45) +
   theme_bw() +
   labs(
+    title = "Day 1",
     x = "Volumetric Water Content (as a percentage)",
     y = "SPAD Value (in SPADs)"
   )
+
+SPAD_Moist_Day2_Plot = SPAD_Moist_Day2 |> ggplot() +
+  aes(x = VWC, y = SPAD_Value) +
+  geom_point() +
+  geom_text(label = c("p = 0.96 \nt = 0.051"),
+    x = 7, y = 35) +
+  theme_bw() +
+  labs(
+    title = "Day 2",
+    x = "Volumetric Water Content (as a percentage)",
+    y = "SPAD Value (in SPADs)"
+  )
+
+(SPAD_Moist_Day1_Plot | SPAD_Moist_Day2_Plot)
 ```
 
 Scatter plot of SPAD value as a function of volumetric water content across all treatment types, faceted by sampling day. Results of a simple regression are displayed on the top left of each facet. There appears to be no relationship between SPAD value and volumetric water content both before and after the rainstorm occurred.
@@ -817,7 +844,7 @@ Leaf_Moist_Day2
 # Creating mixed-effects models for each Day using lmer() with Treatment, Multiple_Seedling, and Block as random effects
 Leaf_Moist_Day1_Model = lmer(
   Num_leaves ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
-  data = SPAD_Moist_Day1)
+  data = Leaf_Moist_Day1)
 
 Leaf_Moist_Day2_Model = lmer(
   Num_leaves ~ VWC + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
@@ -838,7 +865,7 @@ Our data exhibit sufficient homogeneity of variance but are heavily skewed. We w
 # Creating mixed-effects models for each Day using lmer() with Treatment, Multiple_Seedling, and Block as random effects with a log() transformation applied
 Leaf_Moist_Day1_Model_log = lmer(
   log(Num_leaves) ~ log(VWC) + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
-  data = SPAD_Moist_Day1)
+  data = Leaf_Moist_Day1)
 
 Leaf_Moist_Day2_Model_log = lmer(
   log(Num_leaves) ~ log(VWC) + (1|Treatment) + (1|Multiple_Seedling) + (1|Block),
@@ -853,42 +880,67 @@ hist(log(Leaf_Moist_Day1$Num_leaves))
 hist(log(Leaf_Moist_Day2$Num_leaves))
 ```
 
-The log-transformed models both exhibit sufficient homogeneity of variance and normality, so we will continue with our regression tests.
+The log-transformed models both exhibit sufficient homogeneity of variance but still leave normality in question. We will conduct a Shapiro-Wilk test on each of our models' residuals and compare these to results for our original models.
+
+```{r}
+# Conducting Shapiro-Wilk test on our log models' residuals using shapiro.test()
+shapiro.test(resid(Leaf_Moist_Day1_Model_log))
+shapiro.test(resid(Leaf_Moist_Day2_Model_log))
+
+# Conducting Shapiro-Wilk test on our inital models' residuals using shapiro.test()
+shapiro.test(resid(Leaf_Moist_Day1_Model))
+shapiro.test(resid(Leaf_Moist_Day2_Model))
+```
+
+The original model is best for the Day 1 data (p = 0.2887) and the log-transformed model is best for the Day 2 data (p = 0.4797), so we will select these and move on to our regression testing.
 
 #### Conducting Simple Regression Test
 
 ```{r}
 # Visualizing summary table of our models with summary()
-summary(Leaf_Moist_Day1_Model_log)
+summary(Leaf_Moist_Day1_Model)
 summary(Leaf_Moist_Day2_Model_log)
 ```
 
-A model of log leaf count as a function of log volumetric water content, with block, treatment, and multiple saplings integrated as random effects, showed no significant relationship between the two measurements on either day (p1 = 0.2578, p2 = 0.5495). We thus cannot reject our null hypothesis and lack support for a relationship between the two values. VWC once again does not appear to be a good predictor of leaf count across treatments.
+A model of log leaf count as a function of log volumetric water content, with block, treatment, and multiple saplings integrated as random effects, showed no significant relationship between the two measurements on either day (p1 = 0.0773, p2 = 0.5495). We thus cannot reject our null hypothesis and lack support for a relationship between the two values. VWC once again does not appear to be a good predictor of leaf count across treatments.
 
 #### Visualizing Regression Results
 
 ```{r}
-# Creating scatter plot for our data using ggplot() + geom_point(), faceted using facet_wrap()
-Leaf_Moist_combined |> ggplot() +
+# Creating scatter plot for our data using ggplot() + geom_point()
+Leaf_Moist_Day1_Plot = Leaf_Moist_Day1 |> ggplot() +
   aes(x = VWC, y = Num_leaves) +
-  geom_point(aes(color = Day)) +
-  facet_wrap(~Day, scales = "free_x") +
+  geom_point() +
   geom_text(
-    label = c("p = 0.2578\nt = -1.165"),
+    label = c("p = 0.0773\nt = -1.877"),
     x = 0.4, y = 20
     ) +
-  geom_text(
-    label = c("p = 0.5495\nt = -0.606"),
-    x = 7.35, y = 20
-  ) +
   theme_bw() +
   labs(
+    title = "Day 1",
     x = "Volumetric water content (as a percentage)",
     y = "Leaf Count (# of individual leaves)"
   )
+
+
+Leaf_Moist_Day2_Plot = Leaf_Moist_Day2 |> ggplot() +
+  aes(x = log(VWC), y = log(Num_leaves)) +
+  geom_point() +
+  geom_text(
+    label = c("p = 0.5495\nt = -0.606"),
+    x = 1.9, y = 2.25
+  ) +
+  theme_bw() +
+  labs(
+    title = "Day 2",
+    x = "Log volumetric water content (as a percentage)",
+    y = "Log leaf Count (# of individual leaves)"
+  )
+
+(Leaf_Moist_Day1_Plot | Leaf_Moist_Day2_Plot)
 ```
 
-Scatter plot of leaf count as a function of volumetric water content across all treatment types, faceted by sampling day. Results of a simple regression are displayed on the top left of each facet. There appears to be no relationship between leaf count and volumetric water content both before and after the rainstorm occurred.
+Scatter plot of leaf count as a function of volumetric water content across all treatment types, separated by sampling day. Day 2 data have been log-transformed. Results of a simple regression are displayed on the top left of each graph. There appears to be no relationship between leaf count and volumetric water content both before and after the rainstorm occurred.
 
 *Note: an outlier seedling from the OS treatment with a leaf count of 112 was removed.*
 
@@ -1177,7 +1229,7 @@ Our overall sample size is large and the individual sample size for each treatme
 hist(SPAD_Data_no_NA$SPAD_Value)
 ```
 
-Our data is normal, so we can continue with an ANOVA.
+It is not immediately clear if our data is sufficently normal, but the sample size is too large for a Shapiro-Wilk test to give reliable results. We will assume normality under the central limit theorem.
 
 #### Conducting ANOVA Test
 
@@ -1322,7 +1374,7 @@ We unfortunately lack any way to reliably account for heteroskedasticity, so we 
 hist(Height_Data_Alive$Seedling_Ht_cm, breaks = 10)
 ```
 
-Our data has a tail but appears mostly normal. We will proceed with a multiple-effects ANOVA.
+Our data has a tail but appears mostly normal, with this assumption being supported by the central limit theorem. We will proceed with a multiple-effects ANOVA.
 
 #### Conducting ANOVA Test
 
