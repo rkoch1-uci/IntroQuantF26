@@ -890,9 +890,203 @@ Leaf_Moist_combined |> ggplot() +
 
 Scatter plot of leaf count as a function of volumetric water content across all treatment types, faceted by sampling day. Results of a simple regression are displayed on the top left of each facet. There appears to be no relationship between leaf count and volumetric water content both before and after the rainstorm occurred.
 
-*Note: an outlier sapling from the OS treatment with a leaf count of 112 was removed.*
+*Note: an outlier seedling from the OS treatment with a leaf count of 112 was removed.*
 
-## 2.4. Evaluating SPAD Value by Treatment
+## 2.4. Evaluating Survivorship by Treatment
+
+#### Generating Tibble of Survival Rates by Treatment at each Block
+
+```{r}
+# Taking count of dead & living plants at each block
+Survivor_Data = Height_Data_Clean |>
+  
+  # Generating summary table of counts with summarise()
+  group_by(Treatment, Block, Dead_Alive) |>
+  summarise(n = n()) |>
+  
+  # Generating a column recording the total number of plants with mutate()
+  mutate(Total_Plants = sum(n)) |>
+  
+  # Pivoting the Dead_Alive column into separate columns with pivot_wider()
+  pivot_wider(names_from = Dead_Alive, values_from = n) |>
+  
+  # Changing NA values of Dead and Alive to 0 using mutate()
+  mutate(Alive = case_when(
+    is.na(Alive) == TRUE ~ 0,
+    is.na(Alive) == FALSE ~ Alive
+    )
+  ) |>
+  mutate(Dead = case_when(
+    is.na(Dead) == TRUE ~ 0,
+    is.na(Dead) == FALSE ~ 0
+    )
+  ) |>
+  
+  # Taking survivorship as a percentage using mutate()
+  mutate(Survival = Alive/Total_Plants)
+
+# Visual verification
+Survivor_Data
+
+# Saving number of plots with multiple seedlings to a variable
+Multiple_plots = Height_Data_Clean |>
+  
+  # Generating summary table of counts with summarise()
+  group_by(Treatment, Block, Multiple_Seedling) |>
+  summarise(n = n()) |>
+  
+  # Selecting only the values with multiple seedlings using filter()
+  ungroup() |>
+  filter(Multiple_Seedling == TRUE)
+
+# Visual verification
+Multiple_plots
+
+# Joining the multiple seedling data onto the survivorship data with left_join()
+Survivor_Data = left_join(Survivor_Data, Multiple_plots, join_by(
+  Treatment, Block
+  )
+)
+
+# Visual verification
+Survivor_Data
+
+# Cleaning survivorship data
+Survivor_Data = Survivor_Data |>
+  
+  # Removing Multiple_Seedling column with select()
+  select(-Multiple_Seedling) |>
+  
+  # Renaming n column with mutate()
+  rename(Multiple_Seedling_plots = n) |>
+  
+  # Removing NA values from our new column with mutate()
+  mutate(Multiple_Seedling_plots = case_when(
+    is.na(Multiple_Seedling_plots) == TRUE ~ 0,
+    is.na(Multiple_Seedling_plots) == FALSE ~ Multiple_Seedling_plots
+    )
+  )
+
+# Visual verification
+Survivor_Data
+```
+
+#### Initial Visualization of Survivorship by Treatment
+
+```{r}
+# Creating visualization of mean survivorship by treatment
+Survivor_Data |>
+  
+  # Generating summary statistics with summarise()
+  group_by(Treatment) |>
+  summarise(
+    mean_Survival = mean(Survival),
+    sd_Survival = sd(Survival),
+    n = n(),
+    se_Survival = sd_Survival/sqrt(n) 
+  ) |>
+  
+  # Creating column plot with error bars using ggplot() + geom_col() +
+  # geom_errorbar()
+  ggplot() +
+  aes(x = Treatment, y = mean_Survival, fill = Treatment) +
+  geom_col(color = "black") +
+  geom_errorbar(aes(
+    ymin = mean_Survival - se_Survival,
+    ymax = mean_Survival + se_Survival
+    ),
+    width = 0.2, position = position_dodge(0.9)
+  ) +
+  theme_bw() +
+  theme(
+    legend.position =  "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    x = "Treatment",
+    y = "Survivorship (as a percentage)"
+  )
+```
+
+Column plot of average survivorship for each treatment, with standard error bars visualized at the top of each column. It's difficult to determine if there are any true differences between treatments, as the columns appear different from one another but the large standard error means this visual could be misleading.
+
+#### Checking Prerequisites for ANOVA Testing
+
+```{r}
+# Generating mixed-effects model for survivorship using lmer(), using Block, Total_Plants, and Multiple_Seedling_plots as random effects
+Survivor_Model = lmer(Survival ~ Treatment + (1|Block) + (1|Total_Plants) +
+  (1|Multiple_Seedling_plots), data = Survivor_Data)
+
+# Checking plot of residuals vs. fitted for our model with plot()
+plot(Survivor_Model)
+
+# Checking histogram of survivorship with hist()
+hist(Survivor_Data$Survival, breaks = 10)
+```
+
+Our data have homogeneity of variance but it is unclear if there is normality. We'll attempt a Shapiro-Wilk test on the residuals of our model.
+
+```{r}
+# Conducting Shapiro-Wilk test on our model's residuals using shapiro.test()
+shapiro.test(resid(Survivor_Model))
+```
+
+A Shapiro-WIlk test confirms our data is normal (p = 0.9781), so we can continue with an ANOVA test.
+
+#### Conducting ANOVA Test
+
+```{r}
+# Displaying ANOVA table with anova()
+anova(Survivor_Model)
+```
+
+Our ANOVA table shows no strongly significant differences found among treatments (p = 0.08509). Degrees of freedom and the F-statistic (F = 2.8584) are notably low.
+
+#### Visualizing ANOVA Results
+
+```{r}
+# Creating visualization of mean survivorship by treatment
+Survivor_Data |>
+  
+  # Generating summary statistics with summarise()
+  group_by(Treatment) |>
+  summarise(
+    mean_Survival = mean(Survival),
+    sd_Survival = sd(Survival),
+    n = n(),
+    se_Survival = sd_Survival/sqrt(n) 
+  ) |>
+  
+  # Creating column plot with error bars using ggplot() + geom_col() +
+  # geom_errorbar()
+  ggplot() +
+  aes(x = Treatment, y = mean_Survival, fill = Treatment) +
+  geom_col(color = "black") +
+  geom_errorbar(aes(
+    ymin = mean_Survival - se_Survival,
+    ymax = mean_Survival + se_Survival
+    ),
+    width = 0.2, position = position_dodge(0.9)
+  ) +
+  geom_text(label = c("A", "A", "A"),
+    vjust = 5, size = 6
+  ) +
+  theme_bw() +
+  theme(
+    legend.position =  "none",
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  labs(
+    x = "Treatment",
+    y = "Survivorship (as a percentage)"
+  )
+```
+
+Column plot of mean survivorship between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within each column (p = 0.08509, F = 2.8584). No strongly significant differences were found between any of the three treatments.
+
+## 2.5. Evaluating SPAD Value by Treatment
 
 #### Initial Visualization of SPAD Value by Treatment
 
@@ -1041,7 +1235,7 @@ SPAD_Data_no_NA |>
 
 Column plot of mean SPAD values between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within each column (p = 0.0002576, F = 8.6531). The adult canopy treatment was found to differ from the dead tree (p = 0.0116) and open sky (p = 0.0010) treatments.
 
-## 2.5. Evaluating Seedling Height by Treatment
+## 2.6. Evaluating Seedling Height by Treatment
 
 #### Initial Visualization of Seedling Height by Treatment
 
@@ -1190,7 +1384,7 @@ Height_Data_Alive |>
 
 Column plot of mean seedling height between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within each column (p = 1.743e-07, F = 25.836). The open sky treatment was found to differ from the adult canopy (p = 0.0001) and dead tree (p \< 0.0001) treatments.
 
-## 2.6. Evaluating Leaf Count by Treatment
+## 2.7. Evaluating Leaf Count by Treatment
 
 #### Initial Visualization of Leaf Count by Treatment
 
