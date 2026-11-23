@@ -940,7 +940,7 @@ Leaf_Moist_Day2_Plot = Leaf_Moist_Day2 |> ggplot() +
 (Leaf_Moist_Day1_Plot | Leaf_Moist_Day2_Plot)
 ```
 
-Scatter plot of leaf count as a function of volumetric water content across all treatment types, separated by sampling day. Day 2 data have been log-transformed. Results of a simple regression are displayed on the top left of each graph. There appears to be no relationship between leaf count and volumetric water content both before and after the rainstorm occurred.
+Scatter plot of leaf count as a function of volumetric water content across all treatment types, separated by sampling day. Day 2 data have been log-transformed. Results of a simple regression are displayed on the top left of each graph. There appears to be no relationship between leaf count and volumetric water content both before and after the rainstorm occurred. While the p-value for the Day 1 data regression appears to be close to the threshold of 0.05, the low degrees of freedom for this test likely means this number is misleading (Table \[X\]).
 
 *Note: an outlier seedling from the OS treatment with a leaf count of 112 was removed.*
 
@@ -1148,7 +1148,7 @@ Survivor_Data |>
   )
 ```
 
-Column plot of mean survivorship between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within each column (p = 0.08509, F = 2.8584). No strongly significant differences were found between any of the three treatments.
+Column plot of mean survivorship between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within each column (p = 0.08509, F = 2.8584). No strongly significant differences were found between any of the three treatments. While the p-value for this test does appear to be close to the threshold of 0.05, the low degrees of freedom means this number is likely misleading (Table \[X\]).
 
 ## 2.5. Evaluating SPAD Value by Treatment
 
@@ -1601,4 +1601,4 @@ Leaf_Model_Data |>
 
 Column plot of mean leaf count between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within top of each column (p = 1.719e-06, F = 17.923). The open sky treatment was found to differ from the adult canopy (p \< 0.0001) and dead tree (p = 0.0002) treatments.
 
-*Note: an outlier sapling from the OS treatment with a leaf count of 112 was removed.*
+*Note: an outlier seedling from the OS treatment with a leaf count of 112 was removed.*
