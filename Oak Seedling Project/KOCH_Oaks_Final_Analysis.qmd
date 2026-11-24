@@ -16,8 +16,7 @@ editor: visual
 # Standard data manipulation/visualization and data loading packages
 library(tidyverse)
 library(readxl)
-library(knitr)
-library(kableExtra)
+library(patchwork)
 
 # Mixed effect model packages
 library(lme4)
@@ -958,7 +957,7 @@ Leaf_Moist_Day1_Plot = Leaf_Moist_Day1 |> ggplot() +
   aes(x = VWC, y = Num_leaves) +
   geom_point() +
   geom_text(
-    label = c("p = 0.0773\nt = -1.877\ndf = 17.526"),
+    label = c("t = -1.877\ndf = 17.526\np = 0.0773"),
     x = 0.5, y = 20, size = 12, size.unit = "pt", family = "serif"
     ) +
   theme_bw() +
@@ -977,7 +976,7 @@ Leaf_Moist_Day2_Plot = Leaf_Moist_Day2 |> ggplot() +
   aes(x = log(VWC), y = log(Num_leaves)) +
   geom_point() +
   geom_text(
-    label = c("p = 0.5495\nt = -0.606\ndf = 24.985"),
+    label = c("t = -0.606\ndf = 24.985\np = 0.5495"),
     x = 2, y = 2.25, size = 12, size.unit = "pt", family = "serif"
   ) +
   theme_bw() +
@@ -1077,8 +1076,8 @@ Multiple_plots
 # Joining the multiple seedling data onto the survivorship data with left_join()
 Survivor_Data = left_join(Survivor_Data, Multiple_plots, join_by(
     Treatment, Block
-    )
   )
+)
 
 # Visual verification
 Survivor_Data
@@ -1088,8 +1087,8 @@ Survivor_Data = Survivor_Data|>
   mutate(Mean_Plot_Ratio = case_when(
     is.na(Mean_Plot_Ratio) == TRUE ~ 0,
     is.na(Mean_Plot_Ratio) == FALSE ~ Mean_Plot_Ratio
-    )
   )
+)
 
 # Visual verification
 Survivor_Data
@@ -1362,7 +1361,7 @@ SPAD_Data_no_NA |>
     position = position_dodge(0.9), width = 0.2
   ) +
   geom_text(
-    label = c("A", "BC", "BC"),
+    label = c("A", "B", "B"),
     vjust = 5, size = 6, family = "serif"
   ) +
   geom_text(
