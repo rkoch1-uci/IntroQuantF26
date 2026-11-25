@@ -1231,7 +1231,7 @@ ggsave("Survivorship_ANOVA_Plot.png", path = "Plots", units = "in", width = 5.5,
   height = 3.75, dpi = 300)
 ```
 
-Column plot of the mean ratio between living and dead seedlings between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within each column. No strong significant differences were found between the three treatments. While the p-value for this test does appear to be close to the threshold of 0.05, the low degrees of freedom mean this number is likely misleading.
+Column plot of the mean ratio between living and dead seedlings between treatments, with standard error bars depicted at the top of each column. A horizontal line is included at y = 1, the break-even point for this ratio. Results from a one-way ANOVA are denoted within each column. No strong significant differences were found between the three treatments. While the p-value for this test does appear to be close to the threshold of 0.05, the low degrees of freedom mean this number is likely misleading.
 
 ## 2.5. Evaluating SPAD Value by Treatment
 
