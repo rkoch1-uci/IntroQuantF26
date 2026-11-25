@@ -1029,12 +1029,16 @@ Survivor_Data = Height_Data_Clean |>
   ) |>
   mutate(Dead = case_when(
     is.na(Dead) == TRUE ~ 0,
-    is.na(Dead) == FALSE ~ 0
+    is.na(Dead) == FALSE ~ Dead
     )
   ) |>
   
-  # Taking survivorship as a percentage using mutate()
-  mutate(Survival = Alive/Total_Plants)
+  # Taking survivorship as a percentage of total plots using mutate()
+  mutate(Survival = case_when(
+    Dead != 0 ~ Alive/Dead,
+    Dead == 0 ~ Alive
+    )
+  )
 
 # Visual verification
 Survivor_Data
@@ -1058,7 +1062,7 @@ Multiple_plots = Height_Data_Clean |>
   # Generating proportion of plots with multiple seedlings in overall plots using
   # mutate()
   mutate(
-    Plot_Ratio = n/3
+    Plot_Ratio = n/(3-n)
   ) |>
   
   # Removing excess columns with select()
@@ -1075,7 +1079,7 @@ Multiple_plots
 
 # Joining the multiple seedling data onto the survivorship data with left_join()
 Survivor_Data = left_join(Survivor_Data, Multiple_plots, join_by(
-    Treatment, Block
+  Treatment, Block
   )
 )
 
@@ -1093,6 +1097,8 @@ Survivor_Data = Survivor_Data|>
 # Visual verification
 Survivor_Data
 ```
+
+Using ratios rather than percentages makes it easier to visualize whether the treatments produced a net positive number of seedlings versus a net negative, which is why we're using it for this test.
 
 #### Initial Visualization of Survivorship by Treatment
 
@@ -1149,14 +1155,14 @@ plot(Survivor_Model)
 hist(Survivor_Data$Survival, breaks = 10)
 ```
 
-Our data have homogeneity of variance but it is unclear if there is normality. We'll attempt a Shapiro-Wilk test on the residuals of our model.
+Our data have homogeneity of variance but they are not visually normal. Since our sample size is too low for the central limit theorem to apply (n = 20), we'll attempt a Shapiro-Wilk test on the residuals of our model.
 
 ```{r}
 # Conducting Shapiro-Wilk test on our model's residuals using shapiro.test()
 shapiro.test(resid(Survivor_Model))
 ```
 
-A Shapiro-Wilk test confirms our data is normal (p = 0.9781), so we can continue with an ANOVA test.
+A Shapiro-Wilk test confirms our data is normal (p = 0.565), so we can continue with an ANOVA test.
 
 #### Conducting ANOVA Test
 
@@ -1169,7 +1175,7 @@ Survivor_ANOVA
 write.csv(Survivor_ANOVA, "Survivor_ANOVA.csv", row.names = FALSE)
 ```
 
-Our ANOVA table shows no strongly significant differences found among treatments (p = 0.0851). Degrees of freedom are notably low.
+Our ANOVA table shows no strongly significant differences found among treatments (p = 0.09704). Degrees of freedom are notably low.
 
 #### Visualizing ANOVA Results
 
@@ -1190,19 +1196,23 @@ Survivor_Data |>
   # geom_errorbar()
   ggplot() +
   aes(x = Treatment, y = mean_Survival) +
-  geom_col(color = "black", fill = NA) +
+  geom_hline(yintercept = 1, linetype = "dashed") +
+  geom_col(color = "black", fill = "white") +
   geom_errorbar(aes(
       ymin = mean_Survival - se_Survival,
       ymax = mean_Survival + se_Survival
     ),
     width = 0.2, position = position_dodge(0.9)
   ) +
-  geom_text(label = c("A", "A", "A"),
-    vjust = 5, size = 6, family = "serif"
+  geom_text(label = c("A", "A", ""),
+    vjust = 7, size = 6, family = "serif"
+  ) +
+  geom_text(label = c("", "", "A"),
+    vjust = -3, size = 6, family = "serif"
   ) +
   geom_text(
-    label = c("F = 2.8584\ndf1 = 2\ndf2 = 17\np = 0.0851"),
-    x = 3, y = 0.6, size = 12, size.unit = "pt", family = "serif"
+    label = c("F = 2.929\ndf1 = 2\ndf2 = 10.618\np = 0.097"),
+    x = 3, y = 1.5, size = 12, size.unit = "pt", family = "serif"
   ) +
   theme_bw() +
   theme(
@@ -1213,7 +1223,7 @@ Survivor_Data |>
   ) +
   labs(
     x = "Treatment",
-    y = "Survivorship (as a percentage)"
+    y = "Ratio of Living to Dead Seedlings"
   )
 
 # Saving plot with ggsave()
@@ -1221,7 +1231,7 @@ ggsave("Survivorship_ANOVA_Plot.png", path = "Plots", units = "in", width = 5.5,
   height = 3.75, dpi = 300)
 ```
 
-Column plot of mean survivorship between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within each column. No strong significant differences were found between the three treatments. While the p-value for this test does appear to be close to the threshold of 0.05, the low degrees of freedom mean this number is likely misleading.
+Column plot of the mean ratio between living and dead seedlings between treatments, with standard error bars depicted at the top of each column. Results from a one-way ANOVA are denoted within each column. No strong significant differences were found between the three treatments. While the p-value for this test does appear to be close to the threshold of 0.05, the low degrees of freedom mean this number is likely misleading.
 
 ## 2.5. Evaluating SPAD Value by Treatment
 

@@ -2,8 +2,8 @@
 title: "Chi-Square and Tabular Tests"
 format: html
 editor: visual
-Author: Amy King-Henry
-lastmodified: Sept 10, 2026
+Author: Ryan Koch
+lastmodified: Nov 24, 2026
 ---
 
 # Tabular Experimental Designs in R
@@ -11,14 +11,13 @@ lastmodified: Sept 10, 2026
 Chi-Square & goodness of fit are tests run on data with CATEGORICAL predictors AND CATEGORICAL responses. They are tests of association.
 
 ```{r}
-load(file = )
+load(file = "Demo Data Files/S4E2e.RData")
 ```
 
 ```{r}
 #install.packages("rstatix")
-library()
-library()
-
+library(tidyverse)
+library(rstatix)
 ```
 
 # Chi-squared analysis
@@ -50,7 +49,7 @@ Do these two heather species occur *more frequently* together or *less frequentl
   - Less = evidence of competition or opposing favored environmental conditions
 
 ```{r}
-
+heather
 
 #typeof(heather)
 ```
@@ -70,7 +69,7 @@ What are the replicates/what do the data represent?
 How many replicate quadrats were surveyed?
 
 ```{r}
-sum()
+sum(heather)
 ```
 
 137 quadrats were surveyed to see if one, both, or neither species were present.
@@ -78,13 +77,13 @@ sum()
 How many quadrats had `Cal.vul` present?
 
 ```{r}
-colSums()
+colSums(heather)
 ```
 
 How many quadrats had `Eri.cin` present?
 
 ```{r}
-
+rowSums(heather)
 ```
 
 #### Chi-square test (for matrix)
@@ -92,7 +91,7 @@ How many quadrats had `Eri.cin` present?
 The built-in R function for chi-square tests works just fine when you're dealing with a matrix.
 
 ```{r}
-
+chisq.test(heather)
 ```
 
 #### Transforming between matrix and data frame
@@ -100,10 +99,10 @@ The built-in R function for chi-square tests works just fine when you're dealing
 Most of the data we work with however is in data frames! Let's transform our matrix to a data frame that keeps the essential information.
 
 ```{r}
-heather_df <-  |> 
-  mutate()
+heather_df <- tibble(heather) |> 
+  mutate(Ercin = rownames(heather))
 
-
+as.matrix(heather)
 ```
 
 We still need to pass only the values to the chi-square function, so we practice selecting only the
@@ -113,30 +112,30 @@ We still need to pass only the values to the chi-square function, so we practice
 
 # heather_df[row, column]
 
-heather_df[]
+heather_df[,1:2]
 ```
 
 #### Chi-square test (data frame)
 
 ```{r}
-TestResults <- chisq_test() # the function can only take number data- so we have to input only the counts and exclude the Treatment column
+TestResults <- chisq_test(heather_df[,1:2]) # the function can only take number data- so we have to input only the counts and exclude the Treatment column
 
-
+TestResults
 ```
 
 This gives us most of what we need! Remember that R automatically applies the Yates correction for 2x2 tables. What happens if we turn this off?
 
 ```{r}
 # to turn off Yates, we do: 
-chisq_test() 
+chisq_test(heather_df[,1:2], correct = FALSE)
 ```
 
 #### Pearson Residuals
 
 ```{r}
-PearResid <- 
+PearResid <- pearson_residuals(TestResults)
 
-
+PearResid
 ```
 
 Remember, we can tell if any specific combination of rows/columns significantly differed from expected by examining the Pearson residuals. If any values are greater than 2 or less than -2, then we interpret that it was greater than 2 standard deviations from the expected counts, and therefore only a 5% likelihood that it occurred by chance.
@@ -146,22 +145,25 @@ Remember, we can tell if any specific combination of rows/columns significantly 
 One way to view this is with a column plot. To make this plot, we need to convert it to tidy data.
 
 ```{r}
-PlottablePearResid <-  |> 
-  |>  
+PlottablePearResid <- PearResid |>
+  as_tibble() |>  
   # PearResid comes out as a list - this converts it so that tidyverse can use it
   
-  mutate()  |>  
+  mutate(Treatment = c("Eri.cin.present", "Eri.cin.absent")) |>  
   # add the treatment names back in manually to a new column - make sure they're in the same order as the input contingency table
   
-  pivot_longer() # make it tidy to be easy to plot
+  pivot_longer(1:2, names_to = "SpeciesPresAbs", values_to = "Residuals") # make it tidy to be easy to plot
 
-
+PlottablePearResid
 ```
 
 ```{r}
-ggplot() +
+ggplot(PlottablePearResid) +
+  aes(x = Treatment, y = Residuals, fill = SpeciesPresAbs) +
+  geom_col(position = position_dodge()) +
   # add significance reference lines
-  
+  geom_hline(yintercept = c(-1.96, 1.96), linetype = "dashed") +
+  labs(y = "Pearson Residuals")
 
 ```
 
@@ -173,22 +175,26 @@ Adapt the method from the script above to run a chi-square test on whether birds
 bird
 ```
 
-```{r}
-bird_df <- 
-
-
-```
-
 #### Chi-square test:
 
 ```{r}
-
+chisq_test(bird)
 ```
 
 #### Pearson Residuals/Plot:
 
 ```{r}
+bird_test = chisq_test(bird)
+BirdPear = pearson_residuals(bird_test)
 
+BirdPear |>
+  as_tibble() |>
+  mutate(Birds = rownames(bird)) |>
+  pivot_longer(1:5, names_to = "Habitats", values_to = "Residuals") |>
+  ggplot() +
+  aes(x = Habitats, y = Residuals, fill = Birds) +
+  geom_col(position = position_dodge()) +
+  geom_hline(yintercept = c(-2, 2), linetype = "dashed")
 ```
 
 ### Example 3: Invertebrate Habitats
@@ -202,13 +208,24 @@ inv.hab
 #### Chi-square test:
 
 ```{r}
-
+inv.hab_test = chisq_test(inv.hab)
+inv.hab_test
 ```
 
 #### Pearson Residuals/Plot:
 
 ```{r}
+inv.hab_Pear = pearson_residuals(inv.hab_test)
+inv.hab_Pear
 
+inv.hab_Pear |>
+  as_tibble() |>
+  mutate(Invertebrate = rownames(inv.hab)) |>
+  pivot_longer(1:3, names_to = "Habitat", values_to = "Residuals") |>
+  ggplot() +
+  aes(x = Habitat, y = Residuals, fill = Invertebrate) +
+  geom_col(position = position_dodge()) +
+  geom_hline(yintercept = c(-2, 2))
 ```
 
 ## Goodness of Fit test
@@ -231,11 +248,11 @@ peas
 ```
 
 ```{r}
-Obs.values <- 
-ratio <-
+Obs.values <- peas
+ratio <- c(9, 3, 3, 1)
 ```
 
 ```{r}
-my.good <- chisq.test()
-
+my.good <- chisq.test(Obs.values, p = ratio, rescale.p = TRUE)
+my.good
 ```
